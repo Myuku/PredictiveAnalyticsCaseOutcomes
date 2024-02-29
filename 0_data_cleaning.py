@@ -16,7 +16,8 @@ def main():
     
     # standardize naming convention
     location_data = location_data.rename(columns={'Country_Region': 'country'}) 
-    location_data.loc[location_data['country'] == 'US', 'country'] = 'United States'      
+    location_data.loc[location_data['country'] == 'US', 'country'] = 'United States'
+    train_cases['outcome'] = train_cases['outcome'].str.capitalize()
     
     # Write out as clean data file
     location_data.to_csv('./clean_data/location_2021.csv')
