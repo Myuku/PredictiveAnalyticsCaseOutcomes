@@ -1,4 +1,3 @@
-import sys
 import pandas as pd
 
 def read_data(path):
