@@ -28,23 +28,25 @@ def colors_from_values(values, palette_name):
         POP_EST => population estimate based on POP_YEAR
 '''
 def plot_data(df: pd.DataFrame, world: geo_pd.GeoDataFrame):
-    total_avaliable_data = df['count'].sum()
+    total_available_data = df['count'].sum()
     
     merged_world = pd.merge(world, df, left_on=['NAME_CIAWF'], right_on=['country'], how='left')
     
     # Case 1: percentage is based on avaliable data of country / total avaliable data from all countries
-    merged_world['avaliable_percentage'] = (merged_world['count'] / total_avaliable_data) * 100         
-    merged_world['avaliable_percentage_log'] = np.log(merged_world['avaliable_percentage'])     
+    merged_world['available_percentage'] = (merged_world['count'] / total_available_data) * 100   
+    merged_world['available_percentage_log'] = np.log(merged_world['available_percentage'])  
+      
     
     # Case 2: percentage is based on: avaliable data of country / country population
     # !!! Problem: values too small 
-    # merged_world['avaliable_percentage'] = (np.divide(merged_world['count'], merged_world['POP_EST']) * 100 )  
+    # merged_world['available_percentage'] = (np.divide(merged_world['count'], merged_world['POP_EST']) * 100 )  
+    # merged_world['available_percentage_log'] = np.log(merged_world['available_percentage'])  
     
     # Plot Heat Map
     _, ax = plt.subplots(1, 1)
-    merged_world.plot(column='avaliable_percentage', ax=ax, cmap="rocket_r", legend=True, legend_kwds={'shrink': 0.6}, vmax=100, vmin=0)       # Only used for proper Legend values
-    merged_world.plot(column='avaliable_percentage_log', ax=ax, cmap="rocket_r", legend=False)                             # Using Log Version (for bigger differences)
-    # merged_world.plot(column='avaliable_percentage', ax=ax, cmap="rocket_r", legend=False)
+    merged_world.plot(column='available_percentage', ax=ax, cmap="rocket_r", legend=True, legend_kwds={'shrink': 0.6}, vmax=100, vmin=0)       # Only used for proper Legend values
+    merged_world.plot(column='available_percentage_log', ax=ax, cmap="rocket_r", legend=False)                             # Using Log Version (for bigger differences)
+    # merged_world.plot(column='available_percentage', ax=ax, cmap="rocket_r", legend=False)
     ax.tick_params(left = False, labelleft = False, bottom = False, labelbottom = False)
     
     # # Plot Bar Plot
@@ -56,22 +58,24 @@ def plot_data(df: pd.DataFrame, world: geo_pd.GeoDataFrame):
     y_values_log = by_continent['log_count'].values.tolist()
     
     _, ax1 = plt.subplots(1, 1)
-    ax1 = sns.barplot(by_continent, x='CONTINENT', y='log_count', palette=colors_from_values(np.array(y_values_log), "YlOrRd"), hue='CONTINENT', legend=False)
-    ax1.set(xlabel='Continents', ylabel='Avaliable Data')
+    ax1 = sns.barplot(by_continent, x = 'CONTINENT', y = 'log_count', 
+                      palette = colors_from_values(np.array(y_values_log), "YlOrRd"), hue = 'CONTINENT', legend = False)
+    ax1.set(xlabel='Continents', ylabel='Available Data')
     
     # Add value to the bars
     for p in ax1.patches:
+        # Revert the log to use correct numbers when showcasing values
         value = np.round(np.exp(p.get_height()), decimals=0).astype(int) if p.get_height() > 0 else 0
         ax1.annotate(value,
-                    xy=(p.get_x()+p.get_width()/2., p.get_height()),
-                    ha='center',
-                    va='center',
-                    xytext=(0, 10),
-                    textcoords='offset points')
+                    xy = (p.get_x()+p.get_width()/2., p.get_height()),
+                    ha = 'center',
+                    va = 'center',
+                    xytext = (0, 10),
+                    textcoords = 'offset points')
 
 
     plt.tick_params(left = False, labelleft = False)
-    plt.xticks(rotation=45)
+    plt.xticks(rotation = 45)
     plt.show()
 
     # Save data
@@ -85,7 +89,8 @@ def main():
     
     # for testing purposes
     merged_data = pd.concat([train_cases, location_data], ignore_index=True)    # concat on country
-    num_avaliable_data_by_country = merged_data[merged_data['outcome'].notna()].value_counts('country').reset_index()
+    num_avaliable_data_by_country = merged_data[merged_data['outcome'].notna()] \
+                                    .value_counts('country').reset_index()
     
     # Plot
     plot_data(num_avaliable_data_by_country, world_data)
