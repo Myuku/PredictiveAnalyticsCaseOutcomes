@@ -23,7 +23,12 @@ def main():
     # 0: False, 1: True
     # unique() == [False  True]
     train_cases['chronic_disease_binary'].replace(to_replace = train_cases['chronic_disease_binary'].unique(),
-                                                  value=[0, 1], inplace=True)
+                                            value=[0, 1], inplace=True)
+    
+    # TODO: Need further discussion regarding on the needs of date_comfirmation
+    # drop the date column for now
+    train_cases.drop('date_confirmation', axis=1, inplace=True)
+    test_cases.drop('date_confirmation', axis=1, inplace=True)
 
     # TODO: Add for country and province
     # Factorize 'country' and 'province' to encode them as integers
