@@ -1,4 +1,8 @@
 import pandas as pd
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
 
 def read_data(path):
     data = pd.read_csv(path, skipinitialspace=True)
@@ -23,15 +27,16 @@ def main():
 
     # TODO: Add for country and province
     # Factorize 'country' and 'province' to encode them as integers
-    train_cases['country'], _ = pd.factorize(train_cases['country'])
-    train_cases['province'], _ = pd.factorize(train_cases['province'])
+    le = LabelEncoder()
+    train_cases['country'] = le.fit_transform(train_cases['country'])
+    train_cases['province'] = le.fit_transform(train_cases['province'])
 
     # For test_cases as well
     test_cases['sex'].replace(to_replace = test_cases['sex'].unique(), value=[0, 1], inplace=True)
     test_cases['chronic_disease_binary'].replace(to_replace = test_cases['chronic_disease_binary'].unique(),
                                                   value=[0, 1], inplace=True)
-    test_cases['country'], _ = pd.factorize(test_cases['country'])
-    test_cases['province'], _ = pd.factorize(test_cases['province'])
+    test_cases['country'] = le.fit_transform(test_cases['country'])
+    test_cases['province'] = le.fit_transform(test_cases['province'])
 
     print('train_cases: \n', train_cases)
     print('test_cases: \n', test_cases)
