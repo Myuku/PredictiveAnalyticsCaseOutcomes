@@ -88,7 +88,7 @@ def main():
     world_data = geo_pd.read_file('./world_map_data/ne_110m_admin_0_countries.shp')
     
     # for testing purposes
-    merged_data = pd.concat([train_cases, location_data], ignore_index=True)    # concat on country
+    merged_data = pd.concat([train_cases, location_data], ignore_index = True)    # concat on country
     num_avaliable_data_by_country = merged_data[merged_data['outcome'].notna()] \
                                     .value_counts('country').reset_index()
     

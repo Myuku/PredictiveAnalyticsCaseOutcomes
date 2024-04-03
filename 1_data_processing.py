@@ -14,17 +14,45 @@ def main():
     
     # Add Expected Mortality Rate
     # TODO: observed deaths in cases_2021_train (based on location) / Location (country, province) Deaths count   ---> UNSURE! just what I think it is. Please rethink about this. - Alisa
-    observed_deaths_data = merged_data[merged_data['outcome'] == 'Deceased'].value_counts(['country', 'province', 'outcome']).reset_index().rename(columns={"count": "observed_deaths"}).drop('outcome', axis=1)
+    
+    # TODO: expected number of deaths / total population size (or the population at risk)
+    # which is: confirmed # * case_fatality_ratio (aka # deaths) / pop size
+    
+    # FIXME: dunno if the expected mortality rate should also be calculated for train set as well and if so
+    #        should it be used as a feature? 
+    
+    observed_deaths_data = merged_data[merged_data['outcome'] == 'Deceased']    \
+                           .value_counts(['country', 'province', 'outcome']).reset_index()  \
+                           .rename(columns={"count": "observed_deaths"}).drop('outcome', axis=1)
     merged_data = pd.merge(merged_data, observed_deaths_data, how='left', on=['country', 'province']) 
     merged_data['Expected_Mortality_Rate'] = merged_data['observed_deaths'] / merged_data['Deaths']
     
-    # Map categorical features to numeric
-    merged_data.loc[~merged_data['outcome'].isin(['Deceased', 'Hospitalized']), 'outcome'] = 'Non_hospitalized'
-    merged_data['outcome'].replace(to_replace=['Deceased', 'Hospitalized', 'Non_hospitalized'], value=[0, 1, 2], inplace=True)
-    print('merged_data: \n', merged_data)
     
-    test_cases.loc[~test_cases['outcome'].isin(['Deceased', 'Hospitalized']), 'outcome'] = 'Non_hospitalized'
-    test_cases['outcome'].replace(to_replace=['Deceased', 'Hospitalized', 'Non_hospitalized'], value=[0, 1, 2], inplace=True)
+    # FIXME: country and province needs to be converted too, but not sure how to handle it.
+    # Map categorical features to numeric
+    # Use '-1' for NaN values 
+    
+    # 0: deceased, 1: hospitalized, 2: non_hospitalized.
+    # unique() == ['Hospitalized' 'Non-Hospitalized' 'Deceased']
+    merged_data['outcome'].replace(to_replace = merged_data['outcome'].unique(), value=[1, 2, 0], inplace=True)
+    merged_data['outcome_group'] = merged_data['outcome']
+    # -1: nan, 0: Female, 1: Male
+    # unique() == [nan 'female' 'male']
+    merged_data['sex'].replace(to_replace = merged_data['sex'].unique(), value=[-1, 0, 1], inplace=True)
+    # 0: False, 1: True
+    # unique() == [False  True]
+    merged_data['chronic_disease_binary'].replace(to_replace = merged_data['chronic_disease_binary'].unique(),
+                                                  value=[0, 1], inplace=True)
+    merged_data['age'].fillna(-1, inplace = True)
+    
+    # For test_cases as well
+    test_cases['sex'].replace(to_replace = test_cases['sex'].unique(), value=[-1, 0, 1], inplace=True)
+    test_cases['chronic_disease_binary'].replace(to_replace = test_cases['chronic_disease_binary'].unique(),
+                                                  value=[0, 1], inplace=True)
+    test_cases['age'].fillna(-1, inplace = True)
+    
+    print('merged_data: \n', merged_data)
+    print('test_cases: \n', test_cases)
     
     # ... add on
     
