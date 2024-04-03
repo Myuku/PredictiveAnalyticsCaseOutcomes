@@ -5,8 +5,8 @@ def read_data(path):
     return data
     
 def main():
-    train_cases = read_data('./data/cases_2021_train_processed_2.csv')
-    test_cases = read_data('./data/cases_2021_test_processed_unlabelled_2.csv')
+    train_cases = read_data('./all_data/partB/data/cases_2021_train_processed_2.csv')
+    test_cases = read_data('./all_data/partB/data/cases_2021_test_processed_unlabelled_2.csv')
     
     print(train_cases['chronic_disease_binary'].unique())
     # 0: deceased, 1: hospitalized, 2: non_hospitalized.
@@ -33,8 +33,8 @@ def main():
     print('test_cases: \n', test_cases)
     
     # Write out as clean data file
-    # train_cases.to_csv('./clean_cases/train_cases.csv', index=False)
-    # test_cases.to_csv('./clean_cases/test_cases.csv', index=False)
+    # train_cases.to_csv('./all_data/partB/clean_data/train_cases.csv', index=False)
+    # test_cases.to_csv('./all_data/partB/clean_data/test_cases.csv', index=False)
     return
     
 if __name__ == '__main__':

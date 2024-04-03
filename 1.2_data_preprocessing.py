@@ -5,8 +5,8 @@ def read_data(path):
     return data
     
 def main():
-    location_data = read_data('./clean_data/cleaned_location.csv')
-    train_cases = read_data('./clean_data/cleaned_train_cases.csv')
+    location_data = read_data('./all_data/partA/clean_data/cleaned_location.csv')
+    train_cases = read_data('./all_data/partA/clean_data/cleaned_train_cases.csv')
     
     # Merge data
     merged_data = pd.merge(train_cases, location_data, how='left', on=['country', 'province'])
@@ -24,7 +24,7 @@ def main():
     merged_data['Expected_Mortality_Rate'] = merged_data['observed_deaths'] / merged_data['Deaths']
     
     # Write out as clean data file
-    merged_data.to_csv('./clean_data/EMR_data.csv', index=False)
+    merged_data.to_csv('./all_data/partA/clean_data/EMR_data.csv', index=False)
     return
     
 if __name__ == '__main__':

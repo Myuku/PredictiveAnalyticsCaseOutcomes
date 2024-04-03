@@ -100,8 +100,8 @@ def plot_data(df: pd.DataFrame, world: geo_pd.GeoDataFrame):
     plt.show()
 
     # Save data
-    # merged_world.to_csv('./clean_data/world_data.csv')
-    # by_continent.to_csv('./clean_data/continent_data.csv')
+    # merged_world.to_csv('./all_data/partA/clean_data/world_data.csv')
+    # by_continent.to_csv('./all_data/partA/clean_data/continent_data.csv')
     
 def clean_dataset(location_data: pd.DataFrame, train_cases: pd.DataFrame):
     location_data = location_data[['Country_Region', 'Confirmed', 'Deaths', 'Province_State']]
@@ -115,14 +115,14 @@ def clean_dataset(location_data: pd.DataFrame, train_cases: pd.DataFrame):
     # Fix missing data
     location_data['province'] = location_data['province'].fillna(location_data['country'])
     
-    location_data.to_csv('./clean_data/cleaned_location.csv', index = False)
-    train_cases.to_csv('./clean_data/cleaned_train_cases.csv', index = False)
+    location_data.to_csv('./all_data/partA/clean_data/cleaned_location.csv', index = False)
+    train_cases.to_csv('./all_data/partA/clean_data/cleaned_train_cases.csv', index = False)
     
     return train_cases, location_data
     
 def main():
-    location_data = read_data('./data/location_2021.csv')
-    train_cases = read_data('./data/cases_2021_train.csv')
+    location_data = read_data('./all_data/partA/data/location_2021.csv')
+    train_cases = read_data('./all_data/partA/data/cases_2021_train.csv')
     world_data = geo_pd.read_file('./world_map_data/ne_110m_admin_0_countries.shp')
     
     location_data, train_cases = clean_dataset(location_data, train_cases)
