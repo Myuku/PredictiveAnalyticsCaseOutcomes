@@ -7,5 +7,5 @@
 ## Python packages used
 
 ```
-pip install scikit-learn matplotlib numpy seaborn geopandas pandas
+pip install scikit-learn matplotlib numpy seaborn geopandas pandas imblearn
 ```
