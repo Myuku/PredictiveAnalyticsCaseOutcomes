@@ -13,13 +13,7 @@ def main():
     merged_data = pd.merge(train_cases, location_data, how='left', on=['country', 'province'])        # Error note: some province are NaN in location_2021.csv so this is not working currently
     
     # Add Expected Mortality Rate
-    # TODO: observed deaths in cases_2021_train (based on location) / Location (country, province) Deaths count   ---> UNSURE! just what I think it is. Please rethink about this. - Alisa
-    
-    # TODO: expected number of deaths / total population size (or the population at risk)
-    # which is: confirmed # * case_fatality_ratio (aka # deaths) / pop size
-    
-    # FIXME: dunno if the expected mortality rate should also be calculated for train set as well and if so
-    #        should it be used as a feature? 
+    # TODO: observed deaths in cases_2021_train (based on location) / Location (country, province) Deaths count
     
     observed_deaths_data = merged_data[merged_data['outcome'] == 'Deceased']    \
                            .value_counts(['country', 'province', 'outcome']).reset_index()  \
@@ -43,13 +37,13 @@ def main():
     # unique() == [False  True]
     merged_data['chronic_disease_binary'].replace(to_replace = merged_data['chronic_disease_binary'].unique(),
                                                   value=[0, 1], inplace=True)
-    merged_data['age'].fillna(-1, inplace = True)
+    merged_data['country']
+    
     
     # For test_cases as well
     test_cases['sex'].replace(to_replace = test_cases['sex'].unique(), value=[-1, 0, 1], inplace=True)
     test_cases['chronic_disease_binary'].replace(to_replace = test_cases['chronic_disease_binary'].unique(),
                                                   value=[0, 1], inplace=True)
-    test_cases['age'].fillna(-1, inplace = True)
     
     print('merged_data: \n', merged_data)
     print('test_cases: \n', test_cases)
