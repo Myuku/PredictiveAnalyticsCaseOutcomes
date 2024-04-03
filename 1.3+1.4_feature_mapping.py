@@ -22,19 +22,23 @@ def main():
                                                   value=[0, 1], inplace=True)
 
     # TODO: Add for country and province
-    # train_cases['country']
-    
+    # Factorize 'country' and 'province' to encode them as integers
+    train_cases['country'], _ = pd.factorize(train_cases['country'])
+    train_cases['province'], _ = pd.factorize(train_cases['province'])
+
     # For test_cases as well
     test_cases['sex'].replace(to_replace = test_cases['sex'].unique(), value=[0, 1], inplace=True)
     test_cases['chronic_disease_binary'].replace(to_replace = test_cases['chronic_disease_binary'].unique(),
                                                   value=[0, 1], inplace=True)
-    
+    test_cases['country'], _ = pd.factorize(test_cases['country'])
+    test_cases['province'], _ = pd.factorize(test_cases['province'])
+
     print('train_cases: \n', train_cases)
     print('test_cases: \n', test_cases)
     
     # Write out as clean data file
-    # train_cases.to_csv('./all_data/partB/clean_data/train_cases.csv', index=False)
-    # test_cases.to_csv('./all_data/partB/clean_data/test_cases.csv', index=False)
+    train_cases.to_csv('./all_data/partB/clean_data/train_cases.csv', index=False)
+    test_cases.to_csv('./all_data/partB/clean_data/test_cases.csv', index=False)
     return
     
 if __name__ == '__main__':
