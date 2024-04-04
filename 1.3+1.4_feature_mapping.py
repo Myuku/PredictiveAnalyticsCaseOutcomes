@@ -47,8 +47,8 @@ def main():
     print('test_cases: \n', test_cases)
     
     # Write out as clean data file
-    train_cases.to_csv('./all_data/partB/clean_data/train_cases.csv', index=False)
-    test_cases.to_csv('./all_data/partB/clean_data/test_cases.csv', index=False)
+    train_cases.to_csv('./all_data/partB/cleaned_data/train_cases.csv', index = False)
+    test_cases.to_csv('./all_data/partB/cleaned_data/test_cases.csv', index = False)
     return
     
 if __name__ == '__main__':
