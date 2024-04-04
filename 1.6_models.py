@@ -17,7 +17,6 @@ from matplotlib.legend_handler import HandlerLine2D
 RANDOM_STATE = 42
 K_FOLD = 10         # can change, value has to be justified in report
 
-
 def read_data(path):
     data = pd.read_csv(path, skipinitialspace=True)
     return data
@@ -97,7 +96,7 @@ def plot_roc_model(clf, x, y):
     plt.show()
     return 
 
-def test_hyper_param(model, x_train, x_test, y_train, y_test, values, params, param: str):
+def tune_hparam_auc_acc(model, x_train, x_test, y_train, y_test, values, params, param: str):
     train_results = []
     test_results = []
     train_accuracies = []
@@ -123,6 +122,29 @@ def test_hyper_param(model, x_train, x_test, y_train, y_test, values, params, pa
     plt.xlabel(param)
     plt.title('Different Values of ' + param + ' on Accuracy and AUC')
     plt.savefig('./all_data/partB/plots/auc_acc_' + param + '.png')
+    
+def plot_auc_rf_tuning(rfmodel, x_train, x_test, y_train, y_test):
+    n_estimators = [1, 2, 4, 8, 16, 32, 64, 128] # >40 is good
+    tune_hparam_auc_acc(model_rf, x_train, x_test, y_train, y_test,
+                     n_estimators, {'random_state': RANDOM_STATE}, 'n_estimators')
+    max_depths = range(1, 32) # >20 is good
+    tune_hparam_auc_acc(model_rf, x_train, x_test, y_train, y_test,
+                     max_depths, {'n_estimators': 40, 'random_state': RANDOM_STATE}, 'max_depth')
+    max_features = ['sqrt', 'log2', len(x_train[0]), None] # sqrt is best
+    tune_hparam_auc_acc(model_rf, x_train, x_test, y_train, y_test,
+                     max_features, {'n_estimators': 40, 'random_state': RANDOM_STATE}, 'max_features')
+    # 1% to 50% of total data
+    min_samples_splits = np.linspace(0.01, 0.5, 50, endpoint=True) # Lower is better (Only raise if not enough time/resources)
+    tune_hparam_auc_acc(model_rf, x_train, x_test, y_train, y_test,
+                     min_samples_splits, {'n_estimators': 40, 'random_state': RANDOM_STATE}, 'min_samples_split')
+    # 1% to 50% of total data
+    min_samples_leafs = np.linspace(0.01, 0.5, 50, endpoint=True) # Lower is better (Only raise if not enough time/resources)
+    tune_hparam_auc_acc(model_rf, x_train, x_test, y_train, y_test,
+                     min_samples_leafs, {'n_estimators': 40, 'random_state': RANDOM_STATE}, 'min_samples_leaf')
+    criterions = ['gini', 'entropy'] # No effect
+    tune_hparam_auc_acc(model_rf, x_train, x_test, y_train, y_test,
+                     criterions, {'n_estimators': 40, 'random_state': RANDOM_STATE}, 'criterion')
+    return
     
 '''For labelling test data without predictions of the outcome_group'''
 def create_submission_file(y_preds, file_name):
@@ -161,9 +183,9 @@ def main():
     
     # Smaller max_features reduces overfitting; sqrt is best for classification generally
     # https://datascience.stackexchange.com/questions/66825/how-many-features-does-random-forest-need-for-the-trees
-    rf_params = {'n_estimators': 5, 'criterion': 'gini', 
+    rf_params = {'n_estimators': 40, 'criterion': 'gini', 
                  'min_samples_split': 2, 'min_samples_leaf': 1,  
-                 'max_features': 'sqrt', 'max_depth': 24,
+                 'max_features': 'sqrt', 'max_depth': 20,
                  'random_state': RANDOM_STATE}
     
     print("\nWithout Scalers(): ")
@@ -181,32 +203,18 @@ def main():
     # model_rf(x_train_standard, x_test_standard, y_train, y_test, rf_params)
     
     
-    
     # TODO: Hyperparameter tuning with GridSearchCV, RandomSearchCV, BayesianOptimization
     
     # "For this project, the goal is to predict the outcome (hospitalized, non-hospitalized, deceased)
     # of a case correctly with a small number of false negatives and false positives"
     
     # Determined ROC curves to obtain good False Positive / True Positive rates 
-    # Graphing purposes!!! - ROC curves can be seen if you uncomment in model
-    max_depths = range(1, 32) # >24 is good
-    test_hyper_param(model_rf, x_train, x_test, y_train, y_test,
-                     max_depths, {'n_estimators': 5, 'random_state': RANDOM_STATE}, 'max_depth')
-    max_features = ['sqrt', 'log2', len(train_cases.drop('outcome_group', axis=1).columns)-1, None] # sqrt is best
-    test_hyper_param(model_rf, x_train, x_test, y_train, y_test,
-                     max_features, {'n_estimators': 5, 'random_state': RANDOM_STATE}, 'max_features')
-    # 1% to 50% of total data
-    min_samples_splits = np.linspace(0.01, 0.5, 50, endpoint=True) # Lower is better (Only raise if not enough time/resources)
-    test_hyper_param(model_rf, x_train, x_test, y_train, y_test,
-                     min_samples_splits, {'n_estimators': 5, 'random_state': RANDOM_STATE}, 'min_samples_split')
-    # 1% to 50% of total data
-    min_samples_leafs = np.linspace(0.01, 0.5, 50, endpoint=True) # Lower is better (Only raise if not enough time/resources)
-    test_hyper_param(model_rf, x_train, x_test, y_train, y_test,
-                     min_samples_leafs, {'n_estimators': 5, 'random_state': RANDOM_STATE}, 'min_samples_leaf')
-    criterions = ['gini', 'entropy'] # No effect
-    test_hyper_param(model_rf, x_train, x_test, y_train, y_test,
-                     criterions, {'n_estimators': 5, 'random_state': RANDOM_STATE}, 'criterion')
+    # He means F1 precision and recall probably, but ROC can work as well
+    # Graphing purposes!!! - ROC curves can be seen if you uncomment it in the used model
+    # Comment out to reduce processing time
+    plot_auc_rf_tuning(model_rf, x_train, x_test, y_train, y_test)
     
+
     # TODO: Best model with best parameters
     # best_model = ...
     
