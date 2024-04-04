@@ -141,7 +141,7 @@ def plot_auc_rf_tuning(rfmodel, x_train, x_test, y_train, y_test):
     min_samples_leafs = np.linspace(0.01, 0.5, 50, endpoint=True) # Lower is better (Only raise if not enough time/resources)
     tune_hparam_auc_acc(model_rf, x_train, x_test, y_train, y_test,
                      min_samples_leafs, {'n_estimators': 40, 'random_state': RANDOM_STATE}, 'min_samples_leaf')
-    criterions = ['gini', 'entropy'] # No effect
+    criterions = ['gini', 'entropy', 'log_loss'] # Gini is best
     tune_hparam_auc_acc(model_rf, x_train, x_test, y_train, y_test,
                      criterions, {'n_estimators': 40, 'random_state': RANDOM_STATE}, 'criterion')
     return
@@ -205,13 +205,15 @@ def main():
     
     # TODO: Hyperparameter tuning with GridSearchCV, RandomSearchCV, BayesianOptimization
     
-    # "For this project, the goal is to predict the outcome (hospitalized, non-hospitalized, deceased)
-    # of a case correctly with a small number of false negatives and false positives"
+    '''
+    "For this project, the goal is to predict the outcome (hospitalized, non-hospitalized, deceased)
+    of a case correctly with a small number of false negatives and false positives"
     
-    # Determined ROC curves to obtain good False Positive / True Positive rates 
-    # He means F1 precision and recall probably, but ROC can work as well
-    # Graphing purposes!!! - ROC curves can be seen if you uncomment it in the used model
-    # Comment out to reduce processing time
+    Determined ROC curves to obtain good False Positive / True Positive rates 
+    He means F1 precision and recall probably, but ROC can work as well
+    Graphing purposes!!! - ROC curves can be seen if you uncomment it in the used model
+    Comment out to reduce processing time
+    '''
     plot_auc_rf_tuning(model_rf, x_train, x_test, y_train, y_test)
     
 
