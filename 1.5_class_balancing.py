@@ -6,7 +6,7 @@ def read_data(path):
     return data
 
 def main():
-    train_cases = read_data('./all_data/partB/clean_data/train_cases.csv')
+    train_cases = read_data('./all_data/partB/cleaned_data/train_cases.csv')
 
     # For train_cases
     # Display original outcome distribution in the training set
