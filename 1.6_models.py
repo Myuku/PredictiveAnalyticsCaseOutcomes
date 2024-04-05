@@ -88,6 +88,7 @@ def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool 
         return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
     
 # Linear SVC is better than SVC for large data sets
+# TODO: to be tested
 def model_linearsvc(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
     if not hyper_tuning:
         clf = LinearSVC(**params)
@@ -104,6 +105,7 @@ def model_linearsvc(x_train, x_test, y_train, y_test, params: dict, hyper_tuning
     else:
         clf = LinearSVC()
 
+# TODO: to be tested
 def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
     if not hyper_tuning:
         clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE)      # for multi-class classification
