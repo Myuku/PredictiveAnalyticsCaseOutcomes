@@ -43,7 +43,7 @@ def read_data(path):
 #     # results.to_csv('./model_results/%s.csv' % 'nn')
 #     return
     
-# Accuracy on y_test: 0.90 (note: not using final train dataset)
+# Accuracy on y_test: 0.90 
 def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
     
     if not hyper_tuning:
@@ -85,6 +85,7 @@ def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool 
         y_preds = tuning.predict(x_test)
         test_acc = accuracy_score(y_test, y_preds)
         rep = classification_report(y_test, y_preds, zero_division = 1)
+        # best_score: average cross-validated score
         return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
     
 # Linear SVC is better than SVC for large data sets
@@ -106,9 +107,11 @@ def model_linearsvc(x_train, x_test, y_train, y_test, params: dict, hyper_tuning
         clf = LinearSVC()
 
 # TODO: to be tested
+# XGBoost Test Accuracy: 0.88 (Default params)
+# XGBoost Test Accuracy: 0.9 (with hyper tuning)
 def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
     if not hyper_tuning:
-        clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE)      # for multi-class classification
+        clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE, **params)      # for multi-class classification
         clf.fit(x_train, y_train)
     
         train_preds = clf.predict(x_train)
@@ -118,13 +121,20 @@ def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: 
         
         rep = classification_report(y_test, y_preds, zero_division = 1)
         
-        return train_acc, test_acc
+        return train_acc, test_acc, rep
     else:
         clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE)
-        tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=200, cv=5, verbose=1, n_jobs=1, return_train_score=True)
+        tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=50, cv=5, verbose=1, n_jobs=1, return_train_score=True, scoring='accuracy')
+        tuning.fit(x_train, y_train)
         results = pd.DataFrame(tuning.cv_results_)
         results.to_csv('./all_data/partB/model_results/%s.csv' % 'xgb')
-        return
+        
+        train_preds = tuning.predict(x_train)
+        train_acc = accuracy_score(y_train, train_preds)
+        y_preds = tuning.predict(x_test)
+        test_acc = accuracy_score(y_test, y_preds)
+        rep = classification_report(y_test, y_preds, zero_division = 1)
+        return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
 
 ''' PLOTS & ANALYSIS '''
 # https://stackoverflow.com/questions/51378105/plot-multi-class-roc-curve-for-decisiontreeclassifier
@@ -268,39 +278,57 @@ def main():
                          'max_depth': [20,25],
                          'random_state': [RANDOM_STATE]
                          }
-    rf_params_tuning = {'n_estimators': [40], 
-                        'criterion' :['gini', 'entropy'],
-                         'min_samples_split': [2], 
-                         'min_samples_leaf': [1],  
-                         'max_features': ['sqrt'],
-                         'max_depth': [20],
-                         'random_state': [RANDOM_STATE]
-                         }
+
     
-    # print("\nWithout Scalers(): ")
+    # print("\n1. Without Scalers(): ")
     # train_acc, test_acc, rep, _, _ = model_rf(x_train, x_test, y_train, y_test, rf_params)
     # print('Random Forest Train Accuracy: %.2f' % train_acc)
     # print('Random Forest Test Accuracy: %.2f' % test_acc)
     # print('Report: \n', rep) 
     
-    print("\nWithout Scalers(), with Hyperparam tuning(): ")
-    train_acc, test_acc, rep, best_score, best_params = model_rf(x_train, x_test, y_train, y_test, rf_params_tuning, hyper_tuning=True)
-    print("Random Forest best params: ", best_params)
-    print('Random Forest Train Accuracy: %.2f' % train_acc)
-    print('Random Forest Test Accuracy: %.2f' % test_acc)
-    print('Report: \n', rep) 
+    # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
+    # train_acc, test_acc, rep, best_score, best_params = model_rf(x_train, x_test, y_train, y_test, rf_params_tuning, hyper_tuning=True)
+    # print("Random Forest best params: ", best_params)
+    # print('Random Forest Train Accuracy: %.2f' % train_acc)
+    # print('Random Forest Test Accuracy: %.2f' % test_acc)
+    # print('Random Forest Report: \n', rep) 
     
     
     
     ''''Model 2: XGBoost '''
+    xgb_params = {
+                    "colsample_bytree": 0.8835558684167137,              
+                    "gamma": 0.06974693032602092,                           
+                    "learning_rate": 0.11764339456056544,                
+                    "max_depth": 9,                         
+                    "n_estimators": 370,                  
+                    "subsample": 0.7824279936868144,
+                 }
+    # For a good general understanding on main params for XGBoost: https://medium.com/@rithpansanga/the-main-parameters-in-xgboost-and-their-effects-on-model-performance-4f9833cac7c
     xgb_params_tuning = {
-                    "colsample_bytree": uniform(0.7, 0.3),
-                    "gamma": uniform(0, 0.5),
-                    "learning_rate": uniform(0.03, 0.3), # default 0.1 
-                    "max_depth": randint(2, 6), # default 3
-                    "n_estimators": randint(100, 150), # default 100
-                    "subsample": uniform(0.6, 0.4)
+                    "colsample_bytree": uniform(0.7, 0.3),              # controls fraction of features used for each tree. smaller -> smaller and less complex models (prevents overfitting) common=[0.5, 1]
+                    "gamma": uniform(0, 0.5),                           # 
+                    "learning_rate": uniform(0.03, 0.3),                # smaller -> slower but more accurate, default=0.3  
+                    "max_depth": randint(2, 10),                         # smaller -> simplier model (underfitting), larger -> overfitting. default=6
+                    "n_estimators": randint(100, 500),                  # number of trees. larger --> overfitting. default 100. common=[100, 1000]
+                    "subsample": uniform(0.6, 0.4),
                 }
+
+    print("\n1. Without Scalers(): ")
+    train_acc, test_acc, rep = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
+    print('XGBoost Train Accuracy: %.2f' % train_acc)
+    print('XGBoost Test Accuracy: %.2f' % test_acc)
+    print('XGBoost Report: \n', rep) 
+    
+    # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
+    # train_acc, test_acc, rep, best_score, best_params = model_xgboost(x_train, x_test, y_train, y_test, xgb_params_tuning, hyper_tuning=True)
+    # print("XGBoost best params: ", best_params)
+    # print("XGBoost best score: ", best_score)
+    # print('XGBoost Train Accuracy: %.2f' % train_acc)
+    # print('XGBoost Test Accuracy: %.2f' % test_acc)
+    # print('XGBoost Report: \n', rep) 
+    
+    
     
     
     # TODO: Scalers don't work well because we need to identify which ones need to be scaled and not.
@@ -322,7 +350,7 @@ def main():
     Graphing purposes!!! - ROC curves can be seen if you uncomment it in the used model
     Comment out to reduce processing time
     '''
-    plot_auc_rf_tuning(model_rf, x_train, x_test, y_train, y_test)
+    # plot_auc_rf_tuning(model_rf, x_train, x_test, y_train, y_test)
     
 
     # TODO: Best model with best parameters
