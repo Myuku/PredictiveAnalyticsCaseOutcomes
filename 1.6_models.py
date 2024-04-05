@@ -5,14 +5,16 @@ from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.experimental import enable_halving_search_cv
-from sklearn.model_selection import HalvingGridSearchCV, train_test_split
+from sklearn.model_selection import HalvingGridSearchCV, train_test_split, GridSearchCV, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, label_binarize
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.multiclass import OneVsRestClassifier
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import roc_curve, auc, f1_score, make_scorer
 from itertools import cycle
 import matplotlib.pyplot as plt
 from matplotlib.legend_handler import HandlerLine2D
+from scipy.stats import uniform, randint
+import xgboost as xgb
 
 RANDOM_STATE = 42
 K_FOLD = 10         # can change, value has to be justified in report
@@ -20,47 +22,109 @@ K_FOLD = 10         # can change, value has to be justified in report
 def read_data(path):
     data = pd.read_csv(path, skipinitialspace=True)
     return data
+
+''' MODELS '''
+# Accuracy on y_test: 0.33 (note: not using final train dataset)        --- might skip nn model as a whole due to poor performance
+# def model_nn(x_train, x_test, y_train, y_test, params: dict):
+#     clf = MLPClassifier(solver='lbfgs', hidden_layer_sizes=(5,), random_state=RANDOM_STATE)
+#     clf.fit(x_train, y_train)
+#     y_preds = clf.predict(x_test)
     
-# Accuracy on y_test: 0.33 (note: not using final train dataset)
-def model_nn(x_train, x_test, y_train, y_test, params: dict):
-    clf = MLPClassifier(solver='lbfgs', hidden_layer_sizes=(5,), random_state=RANDOM_STATE)
-    clf.fit(x_train, y_train)
-    y_preds = clf.predict(x_test)
+#     acc = accuracy_score(y_test, y_preds)
+#     rep = classification_report(y_test, y_preds)
     
-    acc = accuracy_score(y_test, y_preds)
-    rep = classification_report(y_test, y_preds)
-    
-    print('Neural Network Accuracy: %.2f' % acc)
-    print('Report: \n', rep)
+#     print('Neural Network Accuracy: %.2f' % acc)
+#     print('Report: \n', rep)
     
     
-    # With hyperparam tuning method - Not tested yet
-    # tuning_results = HalvingGridSearchCV(clf, params, cv=K_FOLD, factor=3, min_resources='exhaust').fit(x_train, y_train)
-    # results = pd.DataFrame(tuning_results.cv_results_)
-    # results.loc[:, 'mean_test_score'] *= 100
-    # results.to_csv('./model_results/%s.csv' % 'nn')
-    return
+#     # With hyperparam tuning method - Not tested yet
+#     # tuning_results = HalvingGridSearchCV(clf, params, cv=K_FOLD, factor=3, min_resources='exhaust').fit(x_train, y_train)
+#     # results = pd.DataFrame(tuning_results.cv_results_)
+#     # results.to_csv('./model_results/%s.csv' % 'nn')
+#     return
     
 # Accuracy on y_test: 0.90 (note: not using final train dataset)
-def model_rf(x_train, x_test, y_train, y_test, params: dict):
-    clf = RandomForestClassifier(**params)
-    clf.fit(x_train, y_train)
+def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
     
-    train_preds = clf.predict(x_train)
-    train_acc = accuracy_score(y_train, train_preds)
-    y_preds = clf.predict(x_test)
-    test_acc = accuracy_score(y_test, y_preds)
+    if not hyper_tuning:
+        clf = RandomForestClassifier(**params)
+        clf.fit(x_train, y_train)
     
-    rep = classification_report(y_test, y_preds, zero_division = 1)
+        train_preds = clf.predict(x_train)
+        train_acc = accuracy_score(y_train, train_preds)
+        y_preds = clf.predict(x_test)
+        test_acc = accuracy_score(y_test, y_preds)
+        
+        rep = classification_report(y_test, y_preds, zero_division = 1)
     
-    # plot_roc_model(clf, x_test, y_test)
-    _, _, train_roc_auc, _ = calc_roc_auc(clf, x_train, y_train)
-    _, _, test_roc_auc, _ = calc_roc_auc(clf, x_test, y_test)
-    avg_train_auc = np.mean(list(train_roc_auc.values()))
-    avg_test_auc = np.mean(list(test_roc_auc.values()))
+        # plot_roc_model(clf, x_test, y_test)
+        _, _, train_roc_auc, _ = calc_roc_auc(clf, x_train, y_train)
+        _, _, test_roc_auc, _ = calc_roc_auc(clf, x_test, y_test)
+        avg_train_auc = np.mean(list(train_roc_auc.values()))
+        avg_test_auc = np.mean(list(test_roc_auc.values()))
+        return train_acc, test_acc, rep, avg_train_auc, avg_test_auc
+    else:
+        clf = RandomForestClassifier()
+        # grid = GridSearchCV(clf, param_grid=params, refit=True, verbose=3, n_jobs=-1)         # too long
+        # tuning = HalvingGridSearchCV(clf, param_grid=params, refit=True, verbose=1)
+        
+        # method 1: Using scoring
+        scoring = {'accuracy': make_scorer(accuracy_score),
+           'f1_macro': make_scorer(f1_score, average = 'macro'),
+           'f1_micro': make_scorer(f1_score, average = 'micro')}
+        tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True, scoring=scoring, refit='accuracy')
+        
+        # method 2: Not using scoring
+        # tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True)
+        tuning.fit(x_train, y_train)
+        results = pd.DataFrame(tuning.cv_results_)
+        results.to_csv('./all_data/partB/model_results/%s.csv' % 'rf')
+        
+        train_preds = tuning.predict(x_train)
+        train_acc = accuracy_score(y_train, train_preds)
+        y_preds = tuning.predict(x_test)
+        test_acc = accuracy_score(y_test, y_preds)
+        rep = classification_report(y_test, y_preds, zero_division = 1)
+        return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
+    
+# Linear SVC is better than SVC for large data sets
+def model_linearsvc(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
+    if not hyper_tuning:
+        clf = LinearSVC(**params)
+        clf.fit(x_train, y_train)
+    
+        train_preds = clf.predict(x_train)
+        train_acc = accuracy_score(y_train, train_preds)
+        y_preds = clf.predict(x_test)
+        test_acc = accuracy_score(y_test, y_preds)
+        
+        rep = classification_report(y_test, y_preds, zero_division = 1)
+        
+        return train_acc, test_acc
+    else:
+        clf = LinearSVC()
 
-    return train_acc, test_acc, rep, avg_train_auc, avg_test_auc
+def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
+    if not hyper_tuning:
+        clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE)      # for multi-class classification
+        clf.fit(x_train, y_train)
+    
+        train_preds = clf.predict(x_train)
+        train_acc = accuracy_score(y_train, train_preds)
+        y_preds = clf.predict(x_test)
+        test_acc = accuracy_score(y_test, y_preds)
+        
+        rep = classification_report(y_test, y_preds, zero_division = 1)
+        
+        return train_acc, test_acc
+    else:
+        clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE)
+        tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=200, cv=5, verbose=1, n_jobs=1, return_train_score=True)
+        results = pd.DataFrame(tuning.cv_results_)
+        results.to_csv('./all_data/partB/model_results/%s.csv' % 'xgb')
+        return
 
+''' PLOTS & ANALYSIS '''
 # https://stackoverflow.com/questions/51378105/plot-multi-class-roc-curve-for-decisiontreeclassifier
 # Credits to drew_psy 
 # Calculating False Positive / True Positive rates
@@ -177,22 +241,64 @@ def main():
     ## Task 6: Run models
     # model_nn(x_train=x_train, x_test=x_test, y_train=y_train, y_test=y_test, params={})
 
-    # rf_params = {'n_estimators': [1,2,3,4,5,6,7,8,9,10], 'criterion': ['gini', 'entropy'], 
-    #              'min_samples_split': [2,3,4,5], 'min_samples_leaf': [1,2,3,4,5], 
-    #              'max_features': ['sqrt', 'log2', len(train_cases.drop('outcome_group', axis=1).columns)-1]}
-    
+    '''Model 1: Random Forest'''
     # Smaller max_features reduces overfitting; sqrt is best for classification generally
     # https://datascience.stackexchange.com/questions/66825/how-many-features-does-random-forest-need-for-the-trees
     rf_params = {'n_estimators': 40, 'criterion': 'gini', 
                  'min_samples_split': 2, 'min_samples_leaf': 1,  
                  'max_features': 'sqrt', 'max_depth': 20,
                  'random_state': RANDOM_STATE}
+                 
+    # Cut down on number of params possibilities else it will take a long time
+    # rf_params_tuning = {'n_estimators': [32, 64], 
+    #                     'criterion' :['gini', 'entropy'],
+    #                      'min_samples_split': [0.01], 
+    #                      'min_samples_leaf': [0.01, 0.1],  
+    #                      'max_features': ['sqrt', 'log2', len(x_train[0])-1],
+    #                      'max_depth': list(range(20,32)),
+    #                      'random_state': [RANDOM_STATE]
+    #                      }
+    rf_params_tuning = {'n_estimators': [32, 34, 36, 38, 40], 
+                        'criterion' :['gini', 'entropy'],
+                         'min_samples_split': [2,3,4], 
+                         'min_samples_leaf': [1,2,3,4,5],  
+                         'max_features': ['sqrt'],
+                         'max_depth': [20,25],
+                         'random_state': [RANDOM_STATE]
+                         }
+    rf_params_tuning = {'n_estimators': [40], 
+                        'criterion' :['gini', 'entropy'],
+                         'min_samples_split': [2], 
+                         'min_samples_leaf': [1],  
+                         'max_features': ['sqrt'],
+                         'max_depth': [20],
+                         'random_state': [RANDOM_STATE]
+                         }
     
-    print("\nWithout Scalers(): ")
-    train_acc, test_acc, rep, _, _ = model_rf(x_train, x_test, y_train, y_test, rf_params)
+    # print("\nWithout Scalers(): ")
+    # train_acc, test_acc, rep, _, _ = model_rf(x_train, x_test, y_train, y_test, rf_params)
+    # print('Random Forest Train Accuracy: %.2f' % train_acc)
+    # print('Random Forest Test Accuracy: %.2f' % test_acc)
+    # print('Report: \n', rep) 
+    
+    print("\nWithout Scalers(), with Hyperparam tuning(): ")
+    train_acc, test_acc, rep, best_score, best_params = model_rf(x_train, x_test, y_train, y_test, rf_params_tuning, hyper_tuning=True)
+    print("Random Forest best params: ", best_params)
     print('Random Forest Train Accuracy: %.2f' % train_acc)
     print('Random Forest Test Accuracy: %.2f' % test_acc)
     print('Report: \n', rep) 
+    
+    
+    
+    ''''Model 2: XGBoost '''
+    xgb_params_tuning = {
+                    "colsample_bytree": uniform(0.7, 0.3),
+                    "gamma": uniform(0, 0.5),
+                    "learning_rate": uniform(0.03, 0.3), # default 0.1 
+                    "max_depth": randint(2, 6), # default 3
+                    "n_estimators": randint(100, 150), # default 100
+                    "subsample": uniform(0.6, 0.4)
+                }
     
     
     # TODO: Scalers don't work well because we need to identify which ones need to be scaled and not.
