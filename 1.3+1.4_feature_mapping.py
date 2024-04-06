@@ -25,10 +25,24 @@ def main():
     train_cases['chronic_disease_binary'].replace(to_replace = train_cases['chronic_disease_binary'].unique(),
                                             value=[0, 1], inplace=True)
     
-    # TODO: Need further discussion regarding on the needs of date_comfirmation
-    # drop the date column for now
-    train_cases.drop('date_confirmation', axis=1, inplace=True)
-    test_cases.drop('date_confirmation', axis=1, inplace=True)
+    # Parse the date_confirmation into date_time format
+    train_cases['date_confirmation'] = pd.to_datetime(train_cases['date_confirmation'], errors='coerce')
+    test_cases['date_confirmation'] = pd.to_datetime(test_cases['date_confirmation'], errors='coerce')
+    
+    # Extracting year, month, and day
+    train_cases['year'] = train_cases['date_confirmation'].dt.year
+    train_cases['month'] = train_cases['date_confirmation'].dt.month
+    train_cases['day'] = train_cases['date_confirmation'].dt.day
+    train_cases['dayofweek'] = train_cases['date_confirmation'].dt.dayofweek
+
+    test_cases['year'] = test_cases['date_confirmation'].dt.year
+    test_cases['month'] = test_cases['date_confirmation'].dt.month
+    test_cases['day'] = test_cases['date_confirmation'].dt.day
+    test_cases['dayofweek'] = test_cases['date_confirmation'].dt.dayofweek 
+    
+    # drop
+    test_cases.drop('date_confirmation', axis = 1, inplace = True)
+    train_cases.drop('date_confirmation', axis = 1, inplace = True)
     
     # TODO: Combine Country and Province and remove their individual columns
     train_cases['combined_key'] = train_cases['country'] + ', ' + train_cases['province']
