@@ -14,7 +14,13 @@ from itertools import cycle
 import matplotlib.pyplot as plt
 from matplotlib.legend_handler import HandlerLine2D
 from scipy.stats import uniform, randint
+from sklearn.svm import SVC
 import xgboost as xgb
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+
+
 
 RANDOM_STATE = 42
 K_FOLD = 10         # can change, value has to be justified in report
@@ -135,6 +141,33 @@ def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: 
         test_acc = accuracy_score(y_test, y_preds)
         rep = classification_report(y_test, y_preds, zero_division = 1)
         return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
+
+# model svm
+def model_svm(x_train, x_test, y_train, y_test, svm_params, use_scale='none'):
+    # Apply scaling if specified
+    if use_scale == 'minmax':
+        scaler = MinMaxScaler().fit(x_train)
+        x_train = scaler.transform(x_train)
+        x_test = scaler.transform(x_test)
+    elif use_scale == 'standard':
+        scaler = StandardScaler().fit(x_train)
+        x_train = scaler.transform(x_train)
+        x_test = scaler.transform(x_test)
+
+    svm_model = SVC(**svm_params)
+
+    svm_model.fit(x_train, y_train)
+
+    y_train_pred = svm_model.predict(x_train)
+    y_test_pred = svm_model.predict(x_test)
+
+    train_acc = accuracy_score(y_train, y_train_pred)
+    test_acc = accuracy_score(y_test, y_test_pred)
+    rep = classification_report(y_test, y_test_pred)
+
+    return train_acc, test_acc, rep
+
+
 
 ''' PLOTS & ANALYSIS '''
 # https://stackoverflow.com/questions/51378105/plot-multi-class-roc-curve-for-decisiontreeclassifier
@@ -328,8 +361,25 @@ def main():
     # print('XGBoost Test Accuracy: %.2f' % test_acc)
     # print('XGBoost Report: \n', rep) 
     
+
+    # model 3
+    svm_params = {
+    'C': 1.0,  
+    'kernel': 'linear',  
+    'gamma': 'scale',  
+    'random_state': RANDOM_STATE
+    }
     
+    print("\nSVM Model Evaluation: ")
+    train_acc, test_acc, rep = model_svm(x_train, x_test, y_train, y_test, svm_params, use_scale='standard')
+    print('SVM Train Accuracy: %.2f' % train_acc)
+    print('SVM Test Accuracy: %.2f' % test_acc)
+    print('SVM Classification Report: \n', rep)
     
+    # neural network model
+
+
+
     
     # TODO: Scalers don't work well because we need to identify which ones need to be scaled and not.
     #       It is currently having a negative effect.
