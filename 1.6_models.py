@@ -17,9 +17,9 @@ from matplotlib.legend_handler import HandlerLine2D
 from scipy.stats import uniform, randint
 from sklearn.svm import SVC
 import xgboost as xgb
-import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Dense, Dropout
+# import tensorflow as tf
+# from keras.models import Sequential
+# from keras.layers import Dense, Dropout
 
 
 RANDOM_STATE = 42
@@ -130,7 +130,7 @@ def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: 
         
         rep = classification_report(y_test, y_preds, zero_division = 1)
         
-        return train_acc, test_acc, rep
+        return train_acc, test_acc, rep, y_preds
     else:
         clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE)
         tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=50, cv=5, verbose=1, n_jobs=1, return_train_score=True, scoring='accuracy')
@@ -381,21 +381,21 @@ def main():
     
     ''''Model 2: XGBoost '''
     xgb_params = {
-                    "colsample_bytree": 0.8835558684167137,              
-                    "gamma": 0.06974693032602092,                           
-                    "learning_rate": 0.11764339456056544,                
+                    "colsample_bytree": 0.89,              
+                    "gamma": 0.07,                           
+                    "learning_rate": 0.12,                
                     "max_depth": 9,                         
                     "n_estimators": 370,                  
-                    "subsample": 0.7824279936868144,
+                    "subsample": 0.78,
                  }
     # For a good general understanding on main params for XGBoost: https://medium.com/@rithpansanga/the-main-parameters-in-xgboost-and-their-effects-on-model-performance-4f9833cac7c
     xgb_params_tuning = {
-                    "colsample_bytree": uniform(0.7, 0.3),              # controls fraction of features used for each tree. smaller -> smaller and less complex models (prevents overfitting) common=[0.5, 1]
-                    "gamma": uniform(0, 0.5),                           # 
-                    "learning_rate": uniform(0.03, 0.3),                # smaller -> slower but more accurate, default=0.3  
+                    "colsample_bytree": np.linspace(0.5, 1, 100, endpoint=True),              # controls fraction of features used for each tree. smaller -> smaller and less complex models (prevents overfitting) common=[0.5, 1]
+                    "gamma": np.linspace(0, 0.1, 100, endpoint=True),                           # 
+                    "learning_rate": np.linspace(0.05, 0.3, 100, endpoint=True),                # smaller -> slower but more accurate, default=0.3  
                     "max_depth": randint(2, 10),                         # smaller -> simplier model (underfitting), larger -> overfitting. default=6
                     "n_estimators": randint(100, 500),                  # number of trees. larger --> overfitting. default 100. common=[100, 1000]
-                    "subsample": uniform(0.6, 0.4),
+                    "subsample": np.linspace(0.7, 1, 100, endpoint=True)
                 }
 
     # print("\n1. Without Scalers(): ")
@@ -490,9 +490,18 @@ def main():
     
     
     # Task 9: Prediction on test set
-    # model_name = ""
-    # predictions = ...
-    # create_submission_file(y_preds=predictions, "submission_%s.csv" % model_name)
+    # model_name = "xgb"
+    
+    # xgb_params = {
+    #                 "colsample_bytree": 0.89,              
+    #                 "gamma": 0.07,                           
+    #                 "learning_rate": 0.12,                
+    #                 "max_depth": 9,                         
+    #                 "n_estimators": 370,                  
+    #                 "subsample": 0.78,
+    #              }
+    # _, _, _, predictions = model_xgboost(x_train, x_test, y_train, y_test, params=xgb_params)
+    # create_submission_file(y_preds=predictions, file_name="submission_%s.csv" % model_name)
     return
     
     
