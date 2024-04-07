@@ -3,9 +3,10 @@ import numpy as np
 import csv
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.experimental import enable_halving_search_cv
-from sklearn.model_selection import HalvingGridSearchCV, train_test_split, GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import HalvingGridSearchCV, train_test_split, GridSearchCV, RandomizedSearchCV, validation_curve
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, label_binarize
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.multiclass import OneVsRestClassifier
@@ -17,9 +18,8 @@ from scipy.stats import uniform, randint
 from sklearn.svm import SVC
 import xgboost as xgb
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout
-
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
 
 
 RANDOM_STATE = 42
@@ -78,7 +78,9 @@ def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool 
         scoring = {'accuracy': make_scorer(accuracy_score),
            'f1_macro': make_scorer(f1_score, average = 'macro'),
            'f1_micro': make_scorer(f1_score, average = 'micro')}
-        tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True, scoring=scoring, refit='accuracy')
+        tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, 
+                                    n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True, 
+                                    scoring=scoring, refit='accuracy')
         
         # method 2: Not using scoring
         # tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True)
@@ -93,6 +95,7 @@ def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool 
         rep = classification_report(y_test, y_preds, zero_division = 1)
         # best_score: average cross-validated score
         return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
+    
     
 # Linear SVC is better than SVC for large data sets
 # TODO: to be tested
@@ -167,6 +170,37 @@ def model_svm(x_train, x_test, y_train, y_test, svm_params, use_scale='none'):
 
     return train_acc, test_acc, rep
 
+def model_knn(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
+    
+    if not hyper_tuning:
+        clf = KNeighborsClassifier(**params)
+        clf.fit(x_train, y_train)
+    
+        train_preds = clf.predict(x_train)
+        train_acc = accuracy_score(y_train, train_preds)
+        y_preds = clf.predict(x_test)
+        test_acc = accuracy_score(y_test, y_preds)
+        
+        rep = classification_report(y_test, y_preds, zero_division = 1)
+        return train_acc, test_acc, rep
+    
+    else:
+        clf = KNeighborsClassifier()
+        # tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, 
+                                    # n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True)
+        tuning = GridSearchCV(clf, param_grid=params, refit=True, verbose=3, n_jobs=-1)   
+        
+        tuning.fit(x_train, y_train)
+        results = pd.DataFrame(tuning.cv_results_)
+        results.to_csv('./all_data/partB/model_results/%s.csv' % 'knn')
+        
+        train_preds = tuning.predict(x_train)
+        train_acc = accuracy_score(y_train, train_preds)
+        y_preds = tuning.predict(x_test)
+        test_acc = accuracy_score(y_test, y_preds)
+        rep = classification_report(y_test, y_preds, zero_division = 1)
+        # best_score: average cross-validated score
+        return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
 
 
 ''' PLOTS & ANALYSIS '''
@@ -254,6 +288,24 @@ def plot_auc_rf_tuning(rfmodel, x_train, x_test, y_train, y_test):
     tune_hparam_auc_acc(model_rf, x_train, x_test, y_train, y_test,
                      criterions, {'n_estimators': 40, 'random_state': RANDOM_STATE}, 'criterion')
     return
+
+def plot_knn_k_tuning(X, y):
+    
+    param_range = range(1, 11)
+    # Calculate accuracy on training and test set using the
+    # gamma parameter with 5-fold cross validation
+    train_score, test_score = validation_curve(KNeighborsClassifier(), X, y, param_name = "n_neighbors",
+                                               param_range = param_range, cv = 5, scoring = "accuracy")
+        
+    plt.figure()
+    line1, = plt.plot(param_range, np.mean(train_score, axis = 1), 'r', label = "Train Accuracy")
+    line2, = plt.plot(param_range, np.mean(test_score, axis = 1), 'b', label = "Cross Validation (Test) Accuracy")
+    plt.legend(handler_map = {line1: HandlerLine2D(numpoints=2)})
+    plt.ylabel('Accuracy')
+    plt.xlabel('K Value')
+    plt.title('Validation Curve of KNN Classifier')
+    plt.savefig('./all_data/partB/plots/knn_validation_curve.png')
+
     
 '''For labelling test data without predictions of the outcome_group'''
 def create_submission_file(y_preds, file_name):
@@ -327,7 +379,6 @@ def main():
     # print('Random Forest Report: \n', rep) 
     
     
-    
     ''''Model 2: XGBoost '''
     xgb_params = {
                     "colsample_bytree": 0.8835558684167137,              
@@ -347,11 +398,11 @@ def main():
                     "subsample": uniform(0.6, 0.4),
                 }
 
-    print("\n1. Without Scalers(): ")
-    train_acc, test_acc, rep = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
-    print('XGBoost Train Accuracy: %.2f' % train_acc)
-    print('XGBoost Test Accuracy: %.2f' % test_acc)
-    print('XGBoost Report: \n', rep) 
+    # print("\n1. Without Scalers(): ")
+    # train_acc, test_acc, rep = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
+    # print('XGBoost Train Accuracy: %.2f' % train_acc)
+    # print('XGBoost Test Accuracy: %.2f' % test_acc)
+    # print('XGBoost Report: \n', rep) 
     
     # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
     # train_acc, test_acc, rep, best_score, best_params = model_xgboost(x_train, x_test, y_train, y_test, xgb_params_tuning, hyper_tuning=True)
@@ -362,23 +413,54 @@ def main():
     # print('XGBoost Report: \n', rep) 
     
 
-    # model 3
-    svm_params = {
-    'C': 1.0,  
-    'kernel': 'linear',  
-    'gamma': 'scale',  
-    'random_state': RANDOM_STATE
-    }
+    ''''Model 3: SVM '''
+    # svm_params = {
+    # 'C': 1.0,  
+    # 'kernel': 'linear',  
+    # 'gamma': 'scale',  
+    # 'random_state': RANDOM_STATE
+    # }
     
-    print("\nSVM Model Evaluation: ")
-    train_acc, test_acc, rep = model_svm(x_train, x_test, y_train, y_test, svm_params, use_scale='standard')
-    print('SVM Train Accuracy: %.2f' % train_acc)
-    print('SVM Test Accuracy: %.2f' % test_acc)
-    print('SVM Classification Report: \n', rep)
+    # print("\nSVM Model Evaluation: ")
+    # train_acc, test_acc, rep = model_svm(x_train, x_test, y_train, y_test, svm_params, use_scale='standard')
+    # print('SVM Train Accuracy: %.2f' % train_acc)
+    # print('SVM Test Accuracy: %.2f' % test_acc)
+    # print('SVM Classification Report: \n', rep)
+
+    ''''Model 4: K-Nearest Neighbours '''
     
-    # neural network model
+    # KNN Drawbacks, 
+    knn_params = {'n_neighbors': 5, 
+                  'weights' : 'uniform', # Distance is is a lot more strict
+                  'algorithm': 'auto', 
+                  'leaf_size': 25,  
+                  'p': 2, # p = 1: manhattan_distance (l1), p = 2: euclidean_distance (l2)
+                  'n_jobs': -1 # use all your cpu cores
+                  }
 
+    knn_params_tuning = {'n_neighbors': range(3, 10), 
+                         'weights' :['uniform', 'distance'], # Distance is is a lot more strict
+                         'algorithm': ['kd_tree', 'ball_tree'], # brute force is worse in every aspect
+                         'leaf_size': [25],  # Has no effect on the model, only on the speed of execution
+                         'p': [1, 2],
+                        'n_jobs': [-1]
+                         }
 
+    # print("\n1. Without Scalers(): ")   
+    # train_acc, test_acc, rep = model_knn(x_train, x_test, y_train, y_test, knn_params)
+    # print('K-Nearest Train Accuracy: %.2f' % train_acc)
+    # print('K-Nearest Test Accuracy: %.2f' % test_acc)
+    # print('Report: \n', rep) 
+    
+    print("\n2. Without Scalers(), with Hyperparam tuning(): ")
+    train_acc, test_acc, rep, best_score, best_params = model_knn(x_train, x_test, y_train, y_test, knn_params_tuning, hyper_tuning=True)
+    print("K-Nearest best params: ", best_params)
+    print("K-Nearest best score: ", best_score)
+    print('K-Nearest Train Accuracy: %.2f' % train_acc)
+    print('K-Nearest Test Accuracy: %.2f' % test_acc)
+    print('K-Nearest Report: \n', rep) 
+    
+    # plot_knn_k_tuning(X, y)
 
     
     # TODO: Scalers don't work well because we need to identify which ones need to be scaled and not.
