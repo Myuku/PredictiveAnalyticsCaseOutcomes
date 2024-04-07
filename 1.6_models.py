@@ -399,7 +399,7 @@ def main():
                 }
 
     # print("\n1. Without Scalers(): ")
-    # train_acc, test_acc, rep = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
+    # train_acc, test_acc, rep, y_preds = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
     # print('XGBoost Train Accuracy: %.2f' % train_acc)
     # print('XGBoost Test Accuracy: %.2f' % test_acc)
     # print('XGBoost Report: \n', rep) 
@@ -452,13 +452,13 @@ def main():
     # print('K-Nearest Test Accuracy: %.2f' % test_acc)
     # print('Report: \n', rep) 
     
-    print("\n2. Without Scalers(), with Hyperparam tuning(): ")
-    train_acc, test_acc, rep, best_score, best_params = model_knn(x_train, x_test, y_train, y_test, knn_params_tuning, hyper_tuning=True)
-    print("K-Nearest best params: ", best_params)
-    print("K-Nearest best score: ", best_score)
-    print('K-Nearest Train Accuracy: %.2f' % train_acc)
-    print('K-Nearest Test Accuracy: %.2f' % test_acc)
-    print('K-Nearest Report: \n', rep) 
+    # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
+    # train_acc, test_acc, rep, best_score, best_params = model_knn(x_train, x_test, y_train, y_test, knn_params_tuning, hyper_tuning=True)
+    # print("K-Nearest best params: ", best_params)
+    # print("K-Nearest best score: ", best_score)
+    # print('K-Nearest Train Accuracy: %.2f' % train_acc)
+    # print('K-Nearest Test Accuracy: %.2f' % test_acc)
+    # print('K-Nearest Report: \n', rep) 
     
     # plot_knn_k_tuning(X, y)
 
