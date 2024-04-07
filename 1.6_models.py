@@ -16,9 +16,9 @@ from matplotlib.legend_handler import HandlerLine2D
 from scipy.stats import uniform, randint
 from sklearn.svm import SVC
 import xgboost as xgb
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout
+# import tensorflow as tf
+# from tensorflow.keras.models import Sequential
+# from tensorflow.keras.layers import Dense, Dropout
 
 
 
@@ -327,7 +327,6 @@ def main():
     # print('Random Forest Report: \n', rep) 
     
     
-    
     ''''Model 2: XGBoost '''
     xgb_params = {
                     "colsample_bytree": 0.8835558684167137,              
@@ -339,15 +338,15 @@ def main():
                  }
     # For a good general understanding on main params for XGBoost: https://medium.com/@rithpansanga/the-main-parameters-in-xgboost-and-their-effects-on-model-performance-4f9833cac7c
     xgb_params_tuning = {
-                    "colsample_bytree": uniform(0.7, 0.3),              # controls fraction of features used for each tree. smaller -> smaller and less complex models (prevents overfitting) common=[0.5, 1]
-                    "gamma": uniform(0, 0.5),                           # 
-                    "learning_rate": uniform(0.03, 0.3),                # smaller -> slower but more accurate, default=0.3  
+                    "colsample_bytree": np.linspace(0.5, 1, 100, endpoint=True),              # controls fraction of features used for each tree. smaller -> smaller and less complex models (prevents overfitting) common=[0.5, 1]
+                    "gamma": np.linspace(0, 0.1, 100, endpoint=True),                           # 
+                    "learning_rate": np.linspace(0.05, 0.3, 100, endpoint=True),                # smaller -> slower but more accurate, default=0.3  
                     "max_depth": randint(2, 10),                         # smaller -> simplier model (underfitting), larger -> overfitting. default=6
                     "n_estimators": randint(100, 500),                  # number of trees. larger --> overfitting. default 100. common=[100, 1000]
-                    "subsample": uniform(0.6, 0.4),
+                    "subsample": np.linspace(0.7, 1, 100, endpoint=True)
                 }
 
-    print("\n1. Without Scalers(): ")
+    # print("\n1. Without Scalers(): ")
     train_acc, test_acc, rep = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
     print('XGBoost Train Accuracy: %.2f' % train_acc)
     print('XGBoost Test Accuracy: %.2f' % test_acc)
@@ -370,11 +369,11 @@ def main():
     'random_state': RANDOM_STATE
     }
     
-    print("\nSVM Model Evaluation: ")
-    train_acc, test_acc, rep = model_svm(x_train, x_test, y_train, y_test, svm_params, use_scale='standard')
-    print('SVM Train Accuracy: %.2f' % train_acc)
-    print('SVM Test Accuracy: %.2f' % test_acc)
-    print('SVM Classification Report: \n', rep)
+    # print("\nSVM Model Evaluation: ")
+    # train_acc, test_acc, rep = model_svm(x_train, x_test, y_train, y_test, svm_params, use_scale='standard')
+    # print('SVM Train Accuracy: %.2f' % train_acc)
+    # print('SVM Test Accuracy: %.2f' % test_acc)
+    # print('SVM Classification Report: \n', rep)
     
     # neural network model
 
