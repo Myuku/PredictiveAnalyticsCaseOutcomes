@@ -127,7 +127,7 @@ def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: 
         
         rep = classification_report(y_test, y_preds, zero_division = 1)
         
-        return train_acc, test_acc, rep
+        return train_acc, test_acc, rep, y_preds
     else:
         clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE)
         tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=50, cv=5, verbose=1, n_jobs=1, return_train_score=True, scoring='accuracy')
@@ -329,12 +329,12 @@ def main():
     
     ''''Model 2: XGBoost '''
     xgb_params = {
-                    "colsample_bytree": 0.8835558684167137,              
-                    "gamma": 0.06974693032602092,                           
-                    "learning_rate": 0.11764339456056544,                
+                    "colsample_bytree": 0.89,              
+                    "gamma": 0.07,                           
+                    "learning_rate": 0.12,                
                     "max_depth": 9,                         
                     "n_estimators": 370,                  
-                    "subsample": 0.7824279936868144,
+                    "subsample": 0.78,
                  }
     # For a good general understanding on main params for XGBoost: https://medium.com/@rithpansanga/the-main-parameters-in-xgboost-and-their-effects-on-model-performance-4f9833cac7c
     xgb_params_tuning = {
@@ -347,10 +347,10 @@ def main():
                 }
 
     # print("\n1. Without Scalers(): ")
-    train_acc, test_acc, rep = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
-    print('XGBoost Train Accuracy: %.2f' % train_acc)
-    print('XGBoost Test Accuracy: %.2f' % test_acc)
-    print('XGBoost Report: \n', rep) 
+    # train_acc, test_acc, rep = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
+    # print('XGBoost Train Accuracy: %.2f' % train_acc)
+    # print('XGBoost Test Accuracy: %.2f' % test_acc)
+    # print('XGBoost Report: \n', rep) 
     
     # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
     # train_acc, test_acc, rep, best_score, best_params = model_xgboost(x_train, x_test, y_train, y_test, xgb_params_tuning, hyper_tuning=True)
@@ -407,9 +407,18 @@ def main():
     
     
     # Task 9: Prediction on test set
-    # model_name = ""
-    # predictions = ...
-    # create_submission_file(y_preds=predictions, "submission_%s.csv" % model_name)
+    # model_name = "xgb"
+    
+    # xgb_params = {
+    #                 "colsample_bytree": 0.89,              
+    #                 "gamma": 0.07,                           
+    #                 "learning_rate": 0.12,                
+    #                 "max_depth": 9,                         
+    #                 "n_estimators": 370,                  
+    #                 "subsample": 0.78,
+    #              }
+    # _, _, _, predictions = model_xgboost(x_train, x_test, y_train, y_test, params=xgb_params)
+    # create_submission_file(y_preds=predictions, file_name="submission_%s.csv" % model_name)
     return
     
     
