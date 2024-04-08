@@ -324,7 +324,7 @@ def get_scores(path: str, model, x_train, x_test, y_train, y_test):
             _, test_acc, report, _ = model_xgboost(x_train, x_test, y_train, y_test, p)
         elif model == 'knn':
             _, test_acc, report, _ = model_knn(x_train, x_test, y_train, y_test, p)
-        elif model == 'rf':
+        elif model == 'randomforest':
             _, test_acc, report, _ = model_rf(x_train, x_test, y_train, y_test, p)
             
         # Get the scores
@@ -336,7 +336,7 @@ def get_scores(path: str, model, x_train, x_test, y_train, y_test):
         }
         df.loc[len(df)] = new_row
     
-    df.to_csv('./results/model%s_tuning.txt' % model, index=False)
+    df.to_csv('./results/%s_tuning.txt' % model, index=False)
     
 '''For labelling test data without predictions of the outcome_group'''
 def create_submission_file(y_preds, file_name):
