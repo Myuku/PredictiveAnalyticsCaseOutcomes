@@ -1,12 +1,14 @@
 import pandas as pd
 import numpy as np
 import csv
+import json
+import ast
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.experimental import enable_halving_search_cv
-from sklearn.model_selection import HalvingGridSearchCV, train_test_split, GridSearchCV, RandomizedSearchCV, validation_curve
+from sklearn.model_selection import HalvingGridSearchCV, train_test_split, GridSearchCV, RandomizedSearchCV, validation_curve, cross_validate, cross_val_score
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, label_binarize
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.multiclass import OneVsRestClassifier
@@ -23,7 +25,8 @@ import xgboost as xgb
 
 
 RANDOM_STATE = 42
-K_FOLD = 10         # can change, value has to be justified in report
+K_FOLD = 5         # DEFAULT IS 5
+TARGET_NAMES =['deceased', 'hospitalized', 'non_hospitalized']
 
 def read_data(path):
     data = pd.read_csv(path, skipinitialspace=True)
@@ -61,7 +64,7 @@ def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool 
         y_preds = clf.predict(x_test)
         test_acc = accuracy_score(y_test, y_preds)
         
-        rep = classification_report(y_test, y_preds, zero_division = 1)
+        rep = classification_report(y_test, y_preds, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
     
         # plot_roc_model(clf, x_test, y_test)
         _, _, train_roc_auc, _ = calc_roc_auc(clf, x_train, y_train)
@@ -75,15 +78,15 @@ def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool 
         # tuning = HalvingGridSearchCV(clf, param_grid=params, refit=True, verbose=1)
         
         # method 1: Using scoring
-        scoring = {'accuracy': make_scorer(accuracy_score),
-           'f1_macro': make_scorer(f1_score, average = 'macro'),
-           'f1_micro': make_scorer(f1_score, average = 'micro')}
-        tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, 
-                                    n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True, 
-                                    scoring=scoring, refit='accuracy')
+        # scoring = {'accuracy': make_scorer(accuracy_score),
+        #    'f1_macro': make_scorer(f1_score, average = 'macro'),
+        #    'f1_micro': make_scorer(f1_score, average = 'micro')}
+        # tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, 
+        #                             n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True, 
+        #                             scoring=scoring, refit='accuracy')
         
         # method 2: Not using scoring
-        # tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True)
+        tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True)
         tuning.fit(x_train, y_train)
         results = pd.DataFrame(tuning.cv_results_)
         results.to_csv('./all_data/partB/model_results/%s.csv' % 'rf')
@@ -92,7 +95,7 @@ def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool 
         train_acc = accuracy_score(y_train, train_preds)
         y_preds = tuning.predict(x_test)
         test_acc = accuracy_score(y_test, y_preds)
-        rep = classification_report(y_test, y_preds, zero_division = 1)
+        rep = classification_report(y_test, y_preds, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
         # best_score: average cross-validated score
         return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
     
@@ -128,7 +131,7 @@ def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: 
         y_preds = clf.predict(x_test)
         test_acc = accuracy_score(y_test, y_preds)
         
-        rep = classification_report(y_test, y_preds, zero_division = 1)
+        rep = classification_report(y_test, y_preds, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
         
         return train_acc, test_acc, rep, y_preds
     else:
@@ -142,7 +145,7 @@ def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: 
         train_acc = accuracy_score(y_train, train_preds)
         y_preds = tuning.predict(x_test)
         test_acc = accuracy_score(y_test, y_preds)
-        rep = classification_report(y_test, y_preds, zero_division = 1)
+        rep = classification_report(y_test, y_preds, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
         return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
 
 # model svm
@@ -166,7 +169,7 @@ def model_svm(x_train, x_test, y_train, y_test, svm_params, use_scale='none'):
 
     train_acc = accuracy_score(y_train, y_train_pred)
     test_acc = accuracy_score(y_test, y_test_pred)
-    rep = classification_report(y_test, y_test_pred)
+    rep = classification_report(y_test, y_test_pred, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
 
     return train_acc, test_acc, rep
 
@@ -181,7 +184,7 @@ def model_knn(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool
         y_preds = clf.predict(x_test)
         test_acc = accuracy_score(y_test, y_preds)
         
-        rep = classification_report(y_test, y_preds, zero_division = 1)
+        rep = classification_report(y_test, y_preds, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
         return train_acc, test_acc, rep
     
     else:
@@ -198,7 +201,7 @@ def model_knn(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool
         train_acc = accuracy_score(y_train, train_preds)
         y_preds = tuning.predict(x_test)
         test_acc = accuracy_score(y_test, y_preds)
-        rep = classification_report(y_test, y_preds, zero_division = 1)
+        rep = classification_report(y_test, y_preds, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
         # best_score: average cross-validated score
         return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
 
@@ -306,6 +309,34 @@ def plot_knn_k_tuning(X, y):
     plt.title('Validation Curve of KNN Classifier')
     plt.savefig('./all_data/partB/plots/knn_validation_curve.png')
 
+''' Get f1 scores from hyperparams '''
+def get_scores(path: str, model, x_train, x_test, y_train, y_test):
+    model_tuning_data = read_data(path)
+    model_tuning_data = model_tuning_data[['params']]
+    params = model_tuning_data['params'].tolist()
+    
+    df = pd.DataFrame(columns=['hyperparameters', 'mean_macro_f1', 'mean_deceased_f1', 'mean_overall_accuracy'])
+    for param in params:
+        p = ast.literal_eval(param)         # convert str dictionary to dictionary
+        test_acc = None
+        report = None
+        if model == 'xgb':
+            _, test_acc, report, _ = model_xgboost(x_train, x_test, y_train, y_test, p)
+        elif model == 'knn':
+            _, test_acc, report, _ = model_knn(x_train, x_test, y_train, y_test, p)
+        elif model == 'rf':
+            _, test_acc, report, _ = model_rf(x_train, x_test, y_train, y_test, p)
+            
+        # Get the scores
+        new_row = {
+            'hyperparameters': param,
+            'mean_macro_f1': f"{report['macro avg']['f1-score']: .2f}",
+            'mean_deceased_f1': f"{report['deceased']['f1-score']: .2f}",
+            'mean_overall_accuracy': f"{test_acc: .2f}"
+        }
+        df.loc[len(df)] = new_row
+    
+    df.to_csv('./results/model%s_tuning.txt' % model, index=False)
     
 '''For labelling test data without predictions of the outcome_group'''
 def create_submission_file(y_preds, file_name):
@@ -404,13 +435,13 @@ def main():
     # print('XGBoost Test Accuracy: %.2f' % test_acc)
     # print('XGBoost Report: \n', rep) 
     
-    # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
-    # train_acc, test_acc, rep, best_score, best_params = model_xgboost(x_train, x_test, y_train, y_test, xgb_params_tuning, hyper_tuning=True)
-    # print("XGBoost best params: ", best_params)
-    # print("XGBoost best score: ", best_score)
-    # print('XGBoost Train Accuracy: %.2f' % train_acc)
-    # print('XGBoost Test Accuracy: %.2f' % test_acc)
-    # print('XGBoost Report: \n', rep) 
+    print("\n2. Without Scalers(), with Hyperparam tuning(): ")
+    train_acc, test_acc, rep, best_score, best_params = model_xgboost(x_train, x_test, y_train, y_test, xgb_params_tuning, hyper_tuning=True)
+    print("XGBoost best params: ", best_params)
+    print("XGBoost best score: ", best_score)
+    print('XGBoost Train Accuracy: %.2f' % train_acc)
+    print('XGBoost Test Accuracy: %.2f' % test_acc)
+    print('XGBoost Report: \n', rep) 
     
 
     ''''Model 3: SVM '''
@@ -461,6 +492,15 @@ def main():
     # print('K-Nearest Report: \n', rep) 
     
     # plot_knn_k_tuning(X, y)
+    
+    
+    
+    ''' Save scores from hyperparameter tunings '''
+    get_scores('./all_data/partB/model_results/xgb.csv', 'xgb', x_train, x_test, y_train, y_test)
+    # get_scores('./all_data/partB/model_results/rf.csv', 'xgb', x_train, x_test, y_train, y_test)
+    # get_scores('./all_data/partB/model_results/knn.csv', 'xgb', x_train, x_test, y_train, y_test)
+    
+    
 
     
     # TODO: Scalers don't work well because we need to identify which ones need to be scaled and not.
