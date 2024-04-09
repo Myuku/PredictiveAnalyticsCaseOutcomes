@@ -50,9 +50,9 @@ def colors_from_values(values, palette_name):
 '''
 def plot_data(df: pd.DataFrame, world: geo_pd.GeoDataFrame):
     total_available_data = df['count'].sum()
-    
     merged_world = pd.merge(world, df, left_on=['NAME_CIAWF'], right_on=['country'], how='left')
     
+    # Percentage is based on avaliable data of country / total avaliable data from all countries
     # Percentage is based on avaliable data of country / total avaliable data from all countries
     merged_world['available_percentage'] = (merged_world['count'] / total_available_data) * 100   
     merged_world['available_percentage_log'] = np.log(merged_world['available_percentage'])  
@@ -64,7 +64,7 @@ def plot_data(df: pd.DataFrame, world: geo_pd.GeoDataFrame):
     merged_world.plot(column='available_percentage_log', ax=ax, cmap="rocket_r", legend=False) # Using Log for bigger differences
     ax.tick_params(left = False, labelleft = False, bottom = False, labelbottom = False)
     
-    # # Plot Bar Plot
+    #2. Plot Bar Plot
     by_continent = merged_world.groupby('CONTINENT').sum('count').reset_index()
     by_continent.loc[by_continent['CONTINENT'] == 'Seven seas (open ocean)', 'CONTINENT'] = 'Seven seas'
     by_continent['log_count'] = np.log(by_continent['count'].replace(0.0, np.nan))
@@ -88,10 +88,11 @@ def plot_data(df: pd.DataFrame, world: geo_pd.GeoDataFrame):
                     xytext = (0, 10),
                     textcoords = 'offset points')
 
-
+    # Set general plot params
     plt.tick_params(left = False, labelleft = False)
     plt.xticks(rotation = 45)
     plt.show()
+    
 
     # Save data
     # merged_world.to_csv('./all_data/partA/clean_data/world_data.csv')
