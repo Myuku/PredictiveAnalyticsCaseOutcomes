@@ -350,14 +350,14 @@ def main():
                  'max_features': 'sqrt', 'max_depth': 20,
                  'random_state': RANDOM_STATE}
                  
-    rf_params_tuning = {'n_estimators': list(range(30, 41)), 
-                        'criterion' :['gini', 'entropy'],
-                         'min_samples_split': [2,3,4,5], 
-                         'min_samples_leaf': [1,2,3,4,5],  
-                         'max_features': ['sqrt', 'log2'],
-                         'max_depth': list(range(20, 26)),
-                         'random_state': [RANDOM_STATE]
-                         }
+    rf_params_tuning = {'n_estimators': range(20, 60), 
+                        'criterion' : ['gini', 'entropy'],
+                        'min_samples_split': [1,2,3,4,5], 
+                        'min_samples_leaf': [1,2,3,4,5],  
+                        'max_features': ['sqrt', 'log2'],
+                        'max_depth': range(20, 26),
+                        'random_state': [RANDOM_STATE]
+                        }
 
     
     # print("\n1. Random Forest -- Without Scalers(): ")
@@ -417,7 +417,7 @@ def main():
     # print('XGBoost Test Accuracy: %.2f' % test_acc)
     # print('XGBoost Report: \n', rep) 
     
-    ''''Model 4: K-Nearest Neighbours '''
+    ''''Model 3: K-Nearest Neighbours '''
     # KNN Drawbacks, 
     knn_params = {'n_neighbors': 4, 
                   'weights' : 'distance', # Distance is is a lot more strict
