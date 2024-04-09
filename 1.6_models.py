@@ -65,28 +65,22 @@ def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool 
         test_acc = accuracy_score(y_test, y_preds)
         
         rep = classification_report(y_test, y_preds, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
+        results = {
+            'hyperparameters': str(params),
+            'mean_macro_f1': f"{rep['macro avg']['f1-score']: .2f}",
+            'mean_deceased_f1': f"{rep['deceased']['f1-score']: .2f}",
+            'mean_overall_accuracy': f"{test_acc: .2f}"
+        }
     
         # plot_roc_model(clf, x_test, y_test)
         _, _, train_roc_auc, _ = calc_roc_auc(clf, x_train, y_train)
         _, _, test_roc_auc, _ = calc_roc_auc(clf, x_test, y_test)
         avg_train_auc = np.mean(list(train_roc_auc.values()))
         avg_test_auc = np.mean(list(test_roc_auc.values()))
-        return train_acc, test_acc, rep, avg_train_auc, avg_test_auc
+        return train_acc, test_acc, rep, results, avg_train_auc, avg_test_auc
     else:
         clf = RandomForestClassifier()
-        # grid = GridSearchCV(clf, param_grid=params, refit=True, verbose=3, n_jobs=-1)         # too long
-        # tuning = HalvingGridSearchCV(clf, param_grid=params, refit=True, verbose=1)
-        
-        # method 1: Using scoring
-        # scoring = {'accuracy': make_scorer(accuracy_score),
-        #    'f1_macro': make_scorer(f1_score, average = 'macro'),
-        #    'f1_micro': make_scorer(f1_score, average = 'micro')}
-        # tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, 
-        #                             n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True, 
-        #                             scoring=scoring, refit='accuracy')
-        
-        # method 2: Not using scoring
-        tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=10, cv=5, verbose=2, n_jobs=1, return_train_score=True)
+        tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=50, cv=5, verbose=1, return_train_score=True)
         tuning.fit(x_train, y_train)
         results = pd.DataFrame(tuning.cv_results_)
         results.to_csv('./all_data/partB/model_results/%s.csv' % 'rf')
@@ -132,8 +126,14 @@ def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: 
         test_acc = accuracy_score(y_test, y_preds)
         
         rep = classification_report(y_test, y_preds, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
+        results = {
+            'hyperparameters': str(params),
+            'mean_macro_f1': f"{rep['macro avg']['f1-score']: .2f}",
+            'mean_deceased_f1': f"{rep['deceased']['f1-score']: .2f}",
+            'mean_overall_accuracy': f"{test_acc: .2f}"
+        }
         
-        return train_acc, test_acc, rep, y_preds
+        return train_acc, test_acc, rep, results, y_preds
     else:
         clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE)
         tuning = RandomizedSearchCV(clf, param_distributions=params, random_state=RANDOM_STATE, n_iter=50, cv=5, verbose=1, n_jobs=1, return_train_score=True, scoring='accuracy')
@@ -185,7 +185,13 @@ def model_knn(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool
         test_acc = accuracy_score(y_test, y_preds)
         
         rep = classification_report(y_test, y_preds, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
-        return train_acc, test_acc, rep
+        results = {
+            'hyperparameters': str(params),
+            'mean_macro_f1': f"{rep['macro avg']['f1-score']: .2f}",
+            'mean_deceased_f1': f"{rep['deceased']['f1-score']: .2f}",
+            'mean_overall_accuracy': f"{test_acc: .2f}"
+        }
+        return train_acc, test_acc, rep, results
     
     else:
         clf = KNeighborsClassifier()
@@ -321,20 +327,20 @@ def get_scores(path: str, model, x_train, x_test, y_train, y_test):
         test_acc = None
         report = None
         if model == 'xgb':
-            _, test_acc, report, _ = model_xgboost(x_train, x_test, y_train, y_test, p)
+            _, test_acc, report, results, _ = model_xgboost(x_train, x_test, y_train, y_test, p)
         elif model == 'knn':
-            _, test_acc, report, _ = model_knn(x_train, x_test, y_train, y_test, p)
+            _, test_acc, report, results = model_knn(x_train, x_test, y_train, y_test, p)
         elif model == 'randomforest':
-            _, test_acc, report, _ = model_rf(x_train, x_test, y_train, y_test, p)
+            _, test_acc, report, results, _, _ = model_rf(x_train, x_test, y_train, y_test, p)
             
         # Get the scores
-        new_row = {
-            'hyperparameters': param,
-            'mean_macro_f1': f"{report['macro avg']['f1-score']: .2f}",
-            'mean_deceased_f1': f"{report['deceased']['f1-score']: .2f}",
-            'mean_overall_accuracy': f"{test_acc: .2f}"
-        }
-        df.loc[len(df)] = new_row
+        # new_row = {
+        #     'hyperparameters': param,
+        #     'mean_macro_f1': f"{report['macro avg']['f1-score']: .2f}",
+        #     'mean_deceased_f1': f"{report['deceased']['f1-score']: .2f}",
+        #     'mean_overall_accuracy': f"{test_acc: .2f}"
+        # }
+        df.loc[len(df)] = results       # add new row
     
     df.to_csv('./results/%s_tuning.txt' % model, index=False)
     
@@ -386,21 +392,26 @@ def main():
     #                      'max_depth': list(range(20,32)),
     #                      'random_state': [RANDOM_STATE]
     #                      }
-    rf_params_tuning = {'n_estimators': [32, 34, 36, 38, 40], 
+    rf_params_tuning = {'n_estimators': list(range(30, 41)), 
                         'criterion' :['gini', 'entropy'],
-                         'min_samples_split': [2,3,4], 
+                         'min_samples_split': [2,3,4,5], 
                          'min_samples_leaf': [1,2,3,4,5],  
-                         'max_features': ['sqrt'],
-                         'max_depth': [20,25],
+                         'max_features': ['sqrt', 'log2'],
+                         'max_depth': list(range(20, 26)),
                          'random_state': [RANDOM_STATE]
                          }
 
     
     # print("\n1. Without Scalers(): ")
-    # train_acc, test_acc, rep, _, _ = model_rf(x_train, x_test, y_train, y_test, rf_params)
+    # train_acc, test_acc, rep, results, _, _ = model_rf(x_train, x_test, y_train, y_test, rf_params)
     # print('Random Forest Train Accuracy: %.2f' % train_acc)
     # print('Random Forest Test Accuracy: %.2f' % test_acc)
     # print('Report: \n', rep) 
+    # print('Results: \n')
+    # print('Hyperparamters: %s' % results['hyperparameters'])
+    # print('Mean macro f1-score: %s' % results['mean_macro_f1'])
+    # print('Mean deceased f1-score: %s' % results['mean_deceased_f1'])
+    # print('Mean overall accuracy: %s' % results['mean_overall_accuracy'])
     
     # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
     # train_acc, test_acc, rep, best_score, best_params = model_rf(x_train, x_test, y_train, y_test, rf_params_tuning, hyper_tuning=True)
@@ -430,18 +441,23 @@ def main():
                 }
 
     # print("\n1. Without Scalers(): ")
-    # train_acc, test_acc, rep, y_preds = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
+    # train_acc, test_acc, rep, results, y_preds = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
     # print('XGBoost Train Accuracy: %.2f' % train_acc)
     # print('XGBoost Test Accuracy: %.2f' % test_acc)
     # print('XGBoost Report: \n', rep) 
+    # print('Results: \n')
+    # print('Hyperparamters: %s' % results['hyperparameters'])
+    # print('Mean macro f1-score: %s' % results['mean_macro_f1'])
+    # print('Mean deceased f1-score: %s' % results['mean_deceased_f1'])
+    # print('Mean overall accuracy: %s' % results['mean_overall_accuracy'])
     
-    print("\n2. Without Scalers(), with Hyperparam tuning(): ")
-    train_acc, test_acc, rep, best_score, best_params = model_xgboost(x_train, x_test, y_train, y_test, xgb_params_tuning, hyper_tuning=True)
-    print("XGBoost best params: ", best_params)
-    print("XGBoost best score: ", best_score)
-    print('XGBoost Train Accuracy: %.2f' % train_acc)
-    print('XGBoost Test Accuracy: %.2f' % test_acc)
-    print('XGBoost Report: \n', rep) 
+    # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
+    # train_acc, test_acc, rep, best_score, best_params = model_xgboost(x_train, x_test, y_train, y_test, xgb_params_tuning, hyper_tuning=True)
+    # print("XGBoost best params: ", best_params)
+    # print("XGBoost best score: ", best_score)
+    # print('XGBoost Train Accuracy: %.2f' % train_acc)
+    # print('XGBoost Test Accuracy: %.2f' % test_acc)
+    # print('XGBoost Report: \n', rep) 
     
 
     ''''Model 3: SVM '''
@@ -461,11 +477,11 @@ def main():
     ''''Model 4: K-Nearest Neighbours '''
     
     # KNN Drawbacks, 
-    knn_params = {'n_neighbors': 5, 
-                  'weights' : 'uniform', # Distance is is a lot more strict
-                  'algorithm': 'auto', 
+    knn_params = {'n_neighbors': 4, 
+                  'weights' : 'distance', # Distance is is a lot more strict
+                  'algorithm': 'kd_tree', 
                   'leaf_size': 25,  
-                  'p': 2, # p = 1: manhattan_distance (l1), p = 2: euclidean_distance (l2)
+                  'p': 1, # p = 1: manhattan_distance (l1), p = 2: euclidean_distance (l2)
                   'n_jobs': -1 # use all your cpu cores
                   }
 
@@ -478,27 +494,32 @@ def main():
                          }
 
     # print("\n1. Without Scalers(): ")   
-    # train_acc, test_acc, rep = model_knn(x_train, x_test, y_train, y_test, knn_params)
+    # train_acc, test_acc, rep, results = model_knn(x_train, x_test, y_train, y_test, knn_params)
     # print('K-Nearest Train Accuracy: %.2f' % train_acc)
     # print('K-Nearest Test Accuracy: %.2f' % test_acc)
     # print('Report: \n', rep) 
+    # print('Results: \n')
+    # print('Hyperparamters: %s' % results['hyperparameters'])
+    # print('Mean macro f1-score: %s' % results['mean_macro_f1'])
+    # print('Mean deceased f1-score: %s' % results['mean_deceased_f1'])
+    # print('Mean overall accuracy: %s' % results['mean_overall_accuracy'])
     
-    # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
-    # train_acc, test_acc, rep, best_score, best_params = model_knn(x_train, x_test, y_train, y_test, knn_params_tuning, hyper_tuning=True)
-    # print("K-Nearest best params: ", best_params)
-    # print("K-Nearest best score: ", best_score)
-    # print('K-Nearest Train Accuracy: %.2f' % train_acc)
-    # print('K-Nearest Test Accuracy: %.2f' % test_acc)
-    # print('K-Nearest Report: \n', rep) 
+    print("\n2. Without Scalers(), with Hyperparam tuning(): ")
+    train_acc, test_acc, rep, best_score, best_params = model_knn(x_train, x_test, y_train, y_test, knn_params_tuning, hyper_tuning=True)
+    print("K-Nearest best params: ", best_params)
+    print("K-Nearest best score: ", best_score)
+    print('K-Nearest Train Accuracy: %.2f' % train_acc)
+    print('K-Nearest Test Accuracy: %.2f' % test_acc)
+    print('K-Nearest Report: \n', rep) 
     
     # plot_knn_k_tuning(X, y)
     
     
     
     ''' Save scores from hyperparameter tunings '''
-    get_scores('./all_data/partB/model_results/xgb.csv', 'xgb', x_train, x_test, y_train, y_test)
-    # get_scores('./all_data/partB/model_results/rf.csv', 'xgb', x_train, x_test, y_train, y_test)
-    # get_scores('./all_data/partB/model_results/knn.csv', 'xgb', x_train, x_test, y_train, y_test)
+    # get_scores('./all_data/partB/model_results/xgb.csv', 'xgb', x_train, x_test, y_train, y_test)
+    # get_scores('./all_data/partB/model_results/rf.csv', 'randomforest', x_train, x_test, y_train, y_test)
+    get_scores('./all_data/partB/model_results/knn.csv', 'knn', x_train, x_test, y_train, y_test)
     
     
 
