@@ -16,6 +16,7 @@ def main():
     # Separating features and target variable in the training dataset
     X_train = train_cases.drop('outcome_group', axis=1)
     y_train = train_cases['outcome_group']
+    
 
     # Applying SMOTE to balance the classes in the training dataset
     # random_state can be change between 0~42 (doesn't matter)

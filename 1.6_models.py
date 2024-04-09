@@ -243,6 +243,22 @@ def plot_knn_k_tuning(X, y):
     plt.xlabel('K Value')
     plt.title('Validation Curve of KNN Classifier')
     plt.savefig('./all_data/partB/plots/knn_validation_curve.png')
+    
+def plot_rf_estimators_tuning(X, y):
+    
+    param_range = range(0, 120, 20)
+    # Calculate accuracy on training and test set using the
+    # gamma parameter with 5-fold cross validation
+    train_score, test_score = validation_curve(RandomForestClassifier(), X, y, param_name = "n_estimators",
+                                               param_range = param_range, cv = 5, scoring = "accuracy")
+    plt.figure()
+    line1, = plt.plot(param_range, np.mean(train_score, axis = 1), 'r', label = "Train Accuracy")
+    line2, = plt.plot(param_range, np.mean(test_score, axis = 1), 'b', label = "Cross Validation (Test) Accuracy")
+    plt.legend(handler_map = {line1: HandlerLine2D(numpoints=2)})
+    plt.ylabel('Accuracy')
+    plt.xlabel('n_estimators')
+    plt.title('Validation Curve of RF Classifier')
+    plt.savefig('./all_data/partB/plots/rf_estimators_validation_curve.png')
 
 def plot_XGB_depth_tuning(X, y):
     
@@ -257,9 +273,27 @@ def plot_XGB_depth_tuning(X, y):
     line2, = plt.plot(param_range, np.mean(test_score, axis = 1), 'b', label = "Cross Validation (Test) Accuracy")
     plt.legend(handler_map = {line1: HandlerLine2D(numpoints=2)})
     plt.ylabel('Accuracy')
-    plt.xlabel('K Value')
+    plt.xlabel('max_depth')
     plt.title('Validation Curve of XGBoost Classifier')
-    plt.savefig('./all_data/partB/plots/xgb_validation_curve.png')
+    plt.savefig('./all_data/partB/plots/xgb_depth_validation_curve.png')
+    
+def plot_XGB_estimators_tuning(X, y):
+    
+    param_range = range(100, 900, 100)
+    # Calculate accuracy on training and test set using the
+    # gamma parameter with 5-fold cross validation
+    train_score, test_score = validation_curve(xgb.XGBClassifier
+                                               (objective="multi:softprob", random_state=RANDOM_STATE, colsample_bytree = 0.1),
+                                               X, y, param_name = "n_estimators",
+                                               param_range = param_range, cv = 5, scoring = "accuracy")
+    plt.figure()
+    line1, = plt.plot(param_range, np.mean(train_score, axis = 1), 'r', label = "Train Accuracy")
+    line2, = plt.plot(param_range, np.mean(test_score, axis = 1), 'b', label = "Cross Validation (Test) Accuracy")
+    plt.legend(handler_map = {line1: HandlerLine2D(numpoints=2)})
+    plt.ylabel('Accuracy')
+    plt.xlabel('n_estimators')
+    plt.title('Validation Curve of XGBoost Classifier')
+    plt.savefig('./all_data/partB/plots/xgb_estimators_validation_curve.png')
 
 
 
@@ -425,6 +459,8 @@ def main():
     ''' Plot Overtuning graphs '''
     # plot_knn_k_tuning(X, y)
     # plot_XGB_depth_tuning(X, y)
+    plot_XGB_estimators_tuning(X, y)
+    plot_rf_estimators_tuning(X, y)
     
     ''' Save scores from hyperparameter tunings '''
     # get_scores('./all_data/partB/model_results/xgb.csv', 'xgb', x_train, x_test, y_train, y_test)
@@ -445,19 +481,19 @@ def main():
     
 
     # Task 9: Prediction on test set on Best model
-    model_name = "xgb"
-    xgb_params = {
-                    "colsample_bytree": 0.89,              
-                    "gamma": 0.07,                           
-                    "learning_rate": 0.12,                
-                    "max_depth": 9,                         
-                    "n_estimators": 370,                  
-                    "subsample": 0.78,
-                 }
-    clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE, **xgb_params)      # for multi-class classification
-    clf.fit(x_train, y_train)
-    predictions = clf.predict(X_test_cases)
-    create_submission_file(y_preds=predictions, file_name="submission_%s.csv" % model_name)
+    # model_name = "xgb"
+    # xgb_params = {
+    #                 "colsample_bytree": 0.89,              
+    #                 "gamma": 0.07,                           
+    #                 "learning_rate": 0.12,                
+    #                 "max_depth": 9,                         
+    #                 "n_estimators": 370,                  
+    #                 "subsample": 0.78,
+    #              }
+    # clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE, **xgb_params)      # for multi-class classification
+    # clf.fit(x_train, y_train)
+    # predictions = clf.predict(X_test_cases)
+    # create_submission_file(y_preds=predictions, file_name="submission_%s.csv" % model_name)
     return
     
     
