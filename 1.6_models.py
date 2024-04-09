@@ -1,23 +1,17 @@
 import pandas as pd
 import numpy as np
 import csv
-import json
 import ast
-from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn.experimental import enable_halving_search_cv
-from sklearn.model_selection import HalvingGridSearchCV, train_test_split, GridSearchCV, RandomizedSearchCV, validation_curve, cross_validate, cross_val_score
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, label_binarize
+from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV, validation_curve, cross_validate, cross_val_score
+from sklearn.preprocessing import label_binarize
 from sklearn.metrics import accuracy_score, classification_report
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.metrics import roc_curve, auc, f1_score, make_scorer
+from sklearn.metrics import roc_curve, auc
 from itertools import cycle
 import matplotlib.pyplot as plt
 from matplotlib.legend_handler import HandlerLine2D
-from scipy.stats import uniform, randint
-from sklearn.svm import SVC
+from scipy.stats import randint
 import xgboost as xgb
 
 RANDOM_STATE = 42
@@ -261,7 +255,7 @@ def plot_rf_estimators_tuning(X, y):
     plt.savefig('./all_data/partB/plots/rf_estimators_validation_curve.png')
 
 def plot_XGB_depth_tuning(X, y):
-    
+
     param_range = range(1, 16)
     # Calculate accuracy on training and test set using the
     # gamma parameter with 5-fold cross validation
@@ -457,13 +451,13 @@ def main():
     
     
     ''' Plot Overtuning graphs '''
-    # plot_knn_k_tuning(X, y)
-    # plot_XGB_depth_tuning(X, y)
+    plot_knn_k_tuning(X, y)
+    plot_XGB_depth_tuning(X, y)
     plot_XGB_estimators_tuning(X, y)
     plot_rf_estimators_tuning(X, y)
     
     ''' Save scores from hyperparameter tunings '''
-    # get_scores('./all_data/partB/model_results/xgb.csv', 'xgb', x_train, x_test, y_train, y_test)
+    get_scores('./all_data/partB/model_results/xgb.csv', 'xgb', x_train, x_test, y_train, y_test)
     # get_scores('./all_data/partB/model_results/rf.csv', 'randomforest', x_train, x_test, y_train, y_test)
     # get_scores('./all_data/partB/model_results/knn.csv', 'knn', x_train, x_test, y_train, y_test)
     
@@ -481,19 +475,19 @@ def main():
     
 
     # Task 9: Prediction on test set on Best model
-    # model_name = "xgb"
-    # xgb_params = {
-    #                 "colsample_bytree": 0.89,              
-    #                 "gamma": 0.07,                           
-    #                 "learning_rate": 0.12,                
-    #                 "max_depth": 9,                         
-    #                 "n_estimators": 370,                  
-    #                 "subsample": 0.78,
-    #              }
-    # clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE, **xgb_params)      # for multi-class classification
-    # clf.fit(x_train, y_train)
-    # predictions = clf.predict(X_test_cases)
-    # create_submission_file(y_preds=predictions, file_name="submission_%s.csv" % model_name)
+    model_name = "xgb"
+    xgb_params = {
+                    "colsample_bytree": 0.89,              
+                    "gamma": 0.07,                           
+                    "learning_rate": 0.12,                
+                    "max_depth": 9,                         
+                    "n_estimators": 370,                  
+                    "subsample": 0.78,
+                 }
+    clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE, **xgb_params)      # for multi-class classification
+    clf.fit(x_train, y_train)
+    predictions = clf.predict(X_test_cases)
+    create_submission_file(y_preds=predictions, file_name="submission_%s.csv" % model_name)
     return
     
     
