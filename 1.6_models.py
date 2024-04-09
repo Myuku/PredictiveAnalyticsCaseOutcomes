@@ -19,10 +19,6 @@ from matplotlib.legend_handler import HandlerLine2D
 from scipy.stats import uniform, randint
 from sklearn.svm import SVC
 import xgboost as xgb
-# import tensorflow as tf
-# from keras.models import Sequential
-# from keras.layers import Dense, Dropout
-
 
 RANDOM_STATE = 42
 K_FOLD = 5         # DEFAULT IS 5
@@ -33,25 +29,7 @@ def read_data(path):
     return data
 
 ''' MODELS '''
-# Accuracy on y_test: 0.33 (note: not using final train dataset)        --- might skip nn model as a whole due to poor performance
-# def model_nn(x_train, x_test, y_train, y_test, params: dict):
-#     clf = MLPClassifier(solver='lbfgs', hidden_layer_sizes=(5,), random_state=RANDOM_STATE)
-#     clf.fit(x_train, y_train)
-#     y_preds = clf.predict(x_test)
-    
-#     acc = accuracy_score(y_test, y_preds)
-#     rep = classification_report(y_test, y_preds)
-    
-#     print('Neural Network Accuracy: %.2f' % acc)
-#     print('Report: \n', rep)
-    
-    
-#     # With hyperparam tuning method - Not tested yet
-#     # tuning_results = HalvingGridSearchCV(clf, params, cv=K_FOLD, factor=3, min_resources='exhaust').fit(x_train, y_train)
-#     # results = pd.DataFrame(tuning_results.cv_results_)
-#     # results.to_csv('./model_results/%s.csv' % 'nn')
-#     return
-    
+
 # Accuracy on y_test: 0.90 
 def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
     
@@ -100,24 +78,6 @@ def model_rf(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool 
         return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
     
     
-# Linear SVC is better than SVC for large data sets
-# TODO: to be tested
-def model_linearsvc(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
-    if not hyper_tuning:
-        clf = LinearSVC(**params)
-        clf.fit(x_train, y_train)
-    
-        train_preds = clf.predict(x_train)
-        train_acc = accuracy_score(y_train, train_preds)
-        y_preds = clf.predict(x_test)
-        test_acc = accuracy_score(y_test, y_preds)
-        
-        rep = classification_report(y_test, y_preds, zero_division = 1)
-        
-        return train_acc, test_acc
-    else:
-        clf = LinearSVC()
-
 # TODO: to be tested
 # XGBoost Test Accuracy: 0.88 (Default params)
 # XGBoost Test Accuracy: 0.9 (with hyper tuning)
@@ -147,31 +107,6 @@ def model_xgboost(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: 
         test_acc = accuracy_score(y_test, y_preds)
         rep = classification_report(y_test, y_preds, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
         return train_acc, test_acc, rep, tuning.best_score_, tuning.best_params_
-
-# model svm
-def model_svm(x_train, x_test, y_train, y_test, svm_params, use_scale='none'):
-    # Apply scaling if specified
-    if use_scale == 'minmax':
-        scaler = MinMaxScaler().fit(x_train)
-        x_train = scaler.transform(x_train)
-        x_test = scaler.transform(x_test)
-    elif use_scale == 'standard':
-        scaler = StandardScaler().fit(x_train)
-        x_train = scaler.transform(x_train)
-        x_test = scaler.transform(x_test)
-
-    svm_model = SVC(**svm_params)
-
-    svm_model.fit(x_train, y_train)
-
-    y_train_pred = svm_model.predict(x_train)
-    y_test_pred = svm_model.predict(x_test)
-
-    train_acc = accuracy_score(y_train, y_train_pred)
-    test_acc = accuracy_score(y_test, y_test_pred)
-    rep = classification_report(y_test, y_test_pred, zero_division = 1, output_dict=True, target_names=TARGET_NAMES)
-
-    return train_acc, test_acc, rep
 
 def model_knn(x_train, x_test, y_train, y_test, params: dict, hyper_tuning: bool = False):
     
@@ -299,7 +234,6 @@ def plot_knn_k_tuning(X, y):
     # gamma parameter with 5-fold cross validation
     train_score, test_score = validation_curve(KNeighborsClassifier(), X, y, param_name = "n_neighbors",
                                                param_range = param_range, cv = 5, scoring = "accuracy")
-        
     plt.figure()
     line1, = plt.plot(param_range, np.mean(train_score, axis = 1), 'r', label = "Train Accuracy")
     line2, = plt.plot(param_range, np.mean(test_score, axis = 1), 'b', label = "Cross Validation (Test) Accuracy")
@@ -308,6 +242,25 @@ def plot_knn_k_tuning(X, y):
     plt.xlabel('K Value')
     plt.title('Validation Curve of KNN Classifier')
     plt.savefig('./all_data/partB/plots/knn_validation_curve.png')
+
+def plot_XGB_depth_tuning(X, y):
+    
+    param_range = range(1, 16)
+    # Calculate accuracy on training and test set using the
+    # gamma parameter with 5-fold cross validation
+    train_score, test_score = validation_curve(xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE),
+                                               X, y, param_name = "max_depth",
+                                               param_range = param_range, cv = 5, scoring = "accuracy")
+    plt.figure()
+    line1, = plt.plot(param_range, np.mean(train_score, axis = 1), 'r', label = "Train Accuracy")
+    line2, = plt.plot(param_range, np.mean(test_score, axis = 1), 'b', label = "Cross Validation (Test) Accuracy")
+    plt.legend(handler_map = {line1: HandlerLine2D(numpoints=2)})
+    plt.ylabel('Accuracy')
+    plt.xlabel('K Value')
+    plt.title('Validation Curve of XGBoost Classifier')
+    plt.savefig('./all_data/partB/plots/xgb_validation_curve.png')
+
+
 
 ''' Get f1 scores from hyperparams '''
 def get_scores(path: str, model, x_train, x_test, y_train, y_test):
@@ -357,19 +310,9 @@ def main():
     # Do a 80/20 train test split
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE)
     
-    # TODO: Futher preprocessing if required e.g. MinMaxScalar, etc...
-    min_max_scaler = MinMaxScaler()
-    x_train_minmax = min_max_scaler.fit_transform(x_train)
-    x_test_minmax = min_max_scaler.fit_transform(x_test)
-    
-    standard_scaler = StandardScaler()
-    x_train_standard = standard_scaler.fit_transform(x_train)
-    x_test_standard = standard_scaler.fit_transform(x_test)
-    
     ## Task 6: Run models
-    # model_nn(x_train=x_train, x_test=x_test, y_train=y_train, y_test=y_test, params={})
-
     '''Model 1: Random Forest'''
+    
     # Smaller max_features reduces overfitting; sqrt is best for classification generally
     # https://datascience.stackexchange.com/questions/66825/how-many-features-does-random-forest-need-for-the-trees
     rf_params = {'n_estimators': 40, 'criterion': 'gini', 
@@ -377,15 +320,6 @@ def main():
                  'max_features': 'sqrt', 'max_depth': 20,
                  'random_state': RANDOM_STATE}
                  
-    # Cut down on number of params possibilities else it will take a long time
-    # rf_params_tuning = {'n_estimators': [32, 64], 
-    #                     'criterion' :['gini', 'entropy'],
-    #                      'min_samples_split': [0.01], 
-    #                      'min_samples_leaf': [0.01, 0.1],  
-    #                      'max_features': ['sqrt', 'log2', len(x_train[0])-1],
-    #                      'max_depth': list(range(20,32)),
-    #                      'random_state': [RANDOM_STATE]
-    #                      }
     rf_params_tuning = {'n_estimators': [32, 34, 36, 38, 40], 
                         'criterion' :['gini', 'entropy'],
                          'min_samples_split': [2,3,4], 
@@ -435,29 +369,14 @@ def main():
     # print('XGBoost Test Accuracy: %.2f' % test_acc)
     # print('XGBoost Report: \n', rep) 
     
-    print("\n2. Without Scalers(), with Hyperparam tuning(): ")
-    train_acc, test_acc, rep, best_score, best_params = model_xgboost(x_train, x_test, y_train, y_test, xgb_params_tuning, hyper_tuning=True)
-    print("XGBoost best params: ", best_params)
-    print("XGBoost best score: ", best_score)
-    print('XGBoost Train Accuracy: %.2f' % train_acc)
-    print('XGBoost Test Accuracy: %.2f' % test_acc)
-    print('XGBoost Report: \n', rep) 
+    # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
+    # train_acc, test_acc, rep, best_score, best_params = model_xgboost(x_train, x_test, y_train, y_test, xgb_params_tuning, hyper_tuning=True)
+    # print("XGBoost best params: ", best_params)
+    # print("XGBoost best score: ", best_score)
+    # print('XGBoost Train Accuracy: %.2f' % train_acc)
+    # print('XGBoost Test Accuracy: %.2f' % test_acc)
+    # print('XGBoost Report: \n', rep) 
     
-
-    ''''Model 3: SVM '''
-    # svm_params = {
-    # 'C': 1.0,  
-    # 'kernel': 'linear',  
-    # 'gamma': 'scale',  
-    # 'random_state': RANDOM_STATE
-    # }
-    
-    # print("\nSVM Model Evaluation: ")
-    # train_acc, test_acc, rep = model_svm(x_train, x_test, y_train, y_test, svm_params, use_scale='standard')
-    # print('SVM Train Accuracy: %.2f' % train_acc)
-    # print('SVM Test Accuracy: %.2f' % test_acc)
-    # print('SVM Classification Report: \n', rep)
-
     ''''Model 4: K-Nearest Neighbours '''
     
     # KNN Drawbacks, 
@@ -491,27 +410,17 @@ def main():
     # print('K-Nearest Test Accuracy: %.2f' % test_acc)
     # print('K-Nearest Report: \n', rep) 
     
+    
+    
+    ''' Plot Overtuning graphs '''
     # plot_knn_k_tuning(X, y)
-    
-    
+    plot_XGB_depth_tuning(X, y)
     
     ''' Save scores from hyperparameter tunings '''
-    get_scores('./all_data/partB/model_results/xgb.csv', 'xgb', x_train, x_test, y_train, y_test)
+    # get_scores('./all_data/partB/model_results/xgb.csv', 'xgb', x_train, x_test, y_train, y_test)
     # get_scores('./all_data/partB/model_results/rf.csv', 'xgb', x_train, x_test, y_train, y_test)
     # get_scores('./all_data/partB/model_results/knn.csv', 'xgb', x_train, x_test, y_train, y_test)
     
-    
-
-    
-    # TODO: Scalers don't work well because we need to identify which ones need to be scaled and not.
-    #       It is currently having a negative effect.
-    # print("\nWith MinMaxScaler(): ")
-    # model_rf(x_train_minmax, x_test_minmax, y_train, y_test, rf_params)
-    # print("\nWith StandardScaler(): ")  
-    # model_rf(x_train_standard, x_test_standard, y_train, y_test, rf_params)
-    
-    
-    # TODO: Hyperparameter tuning with GridSearchCV, RandomSearchCV, BayesianOptimization
     
     '''
     "For this project, the goal is to predict the outcome (hospitalized, non-hospitalized, deceased)
