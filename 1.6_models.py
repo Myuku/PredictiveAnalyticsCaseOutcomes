@@ -296,10 +296,12 @@ def create_submission_file(y_preds, file_name):
 
 def main():
     train_cases = read_data('./all_data/partB/balanced_data/train_cases.csv')
-    test_cases = read_data('./all_data/partB/data/cases_2021_test_processed_unlabelled_2.csv')
+    test_cases = read_data('./all_data/partB/cleaned_data/test_cases.csv')
     
     X = train_cases.drop('outcome_group', axis=1).values
     y = train_cases['outcome_group'].values
+    
+    X_test_cases = test_cases.values
     
     # Do a 80/20 train test split
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE)
@@ -324,7 +326,7 @@ def main():
                          }
 
     
-    # print("\n1. Without Scalers(): ")
+    # print("\n1. Random Forest -- Without Scalers(): ")
     # train_acc, test_acc, rep, results, _, _ = model_rf(x_train, x_test, y_train, y_test, rf_params)
     # print('Random Forest Train Accuracy: %.2f' % train_acc)
     # print('Random Forest Test Accuracy: %.2f' % test_acc)
@@ -362,7 +364,7 @@ def main():
                     "subsample": np.linspace(0.7, 1, 100, endpoint=True)
                 }
 
-    # print("\n1. Without Scalers(): ")
+    # print("\n1. XGBoost -- Without Scalers(): ")
     # train_acc, test_acc, rep, results, y_preds = model_xgboost(x_train, x_test, y_train, y_test, xgb_params)
     # print('XGBoost Train Accuracy: %.2f' % train_acc)
     # print('XGBoost Test Accuracy: %.2f' % test_acc)
@@ -382,7 +384,6 @@ def main():
     # print('XGBoost Report: \n', rep) 
     
     ''''Model 4: K-Nearest Neighbours '''
-    
     # KNN Drawbacks, 
     knn_params = {'n_neighbors': 4, 
                   'weights' : 'distance', # Distance is is a lot more strict
@@ -400,7 +401,7 @@ def main():
                         'n_jobs': [-1]
                          }
 
-    # print("\n1. Without Scalers(): ")   
+    # print("\n1. KNN -- Without Scalers(): ")   
     # train_acc, test_acc, rep, results = model_knn(x_train, x_test, y_train, y_test, knn_params)
     # print('K-Nearest Train Accuracy: %.2f' % train_acc)
     # print('K-Nearest Test Accuracy: %.2f' % test_acc)
@@ -411,13 +412,13 @@ def main():
     # print('Mean deceased f1-score: %s' % results['mean_deceased_f1'])
     # print('Mean overall accuracy: %s' % results['mean_overall_accuracy'])
     
-    print("\n2. Without Scalers(), with Hyperparam tuning(): ")
-    train_acc, test_acc, rep, best_score, best_params = model_knn(x_train, x_test, y_train, y_test, knn_params_tuning, hyper_tuning=True)
-    print("K-Nearest best params: ", best_params)
-    print("K-Nearest best score: ", best_score)
-    print('K-Nearest Train Accuracy: %.2f' % train_acc)
-    print('K-Nearest Test Accuracy: %.2f' % test_acc)
-    print('K-Nearest Report: \n', rep) 
+    # print("\n2. Without Scalers(), with Hyperparam tuning(): ")
+    # train_acc, test_acc, rep, best_score, best_params = model_knn(x_train, x_test, y_train, y_test, knn_params_tuning, hyper_tuning=True)
+    # print("K-Nearest best params: ", best_params)
+    # print("K-Nearest best score: ", best_score)
+    # print('K-Nearest Train Accuracy: %.2f' % train_acc)
+    # print('K-Nearest Test Accuracy: %.2f' % test_acc)
+    # print('K-Nearest Report: \n', rep) 
     
     
     
@@ -443,23 +444,20 @@ def main():
     # plot_auc_rf_tuning(model_rf, x_train, x_test, y_train, y_test)
     
 
-    # TODO: Best model with best parameters
-    # best_model = ...
-    
-    
-    # Task 9: Prediction on test set
-    # model_name = "xgb"
-    
-    # xgb_params = {
-    #                 "colsample_bytree": 0.89,              
-    #                 "gamma": 0.07,                           
-    #                 "learning_rate": 0.12,                
-    #                 "max_depth": 9,                         
-    #                 "n_estimators": 370,                  
-    #                 "subsample": 0.78,
-    #              }
-    # _, _, _, predictions = model_xgboost(x_train, x_test, y_train, y_test, params=xgb_params)
-    # create_submission_file(y_preds=predictions, file_name="submission_%s.csv" % model_name)
+    # Task 9: Prediction on test set on Best model
+    model_name = "xgb"
+    xgb_params = {
+                    "colsample_bytree": 0.89,              
+                    "gamma": 0.07,                           
+                    "learning_rate": 0.12,                
+                    "max_depth": 9,                         
+                    "n_estimators": 370,                  
+                    "subsample": 0.78,
+                 }
+    clf = xgb.XGBClassifier(objective="multi:softprob", random_state=RANDOM_STATE, **xgb_params)      # for multi-class classification
+    clf.fit(x_train, y_train)
+    predictions = clf.predict(X_test_cases)
+    create_submission_file(y_preds=predictions, file_name="submission_%s.csv" % model_name)
     return
     
     
